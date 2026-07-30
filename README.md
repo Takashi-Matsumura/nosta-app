@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ノスタ
 
-## Getting Started
+学校図書館で読んだ本の感想を残し、過去にその本を読んだ人の感想を読むためのアプリ。
 
-First, run the development server:
+読書はひとりの趣味になりがちだが、同じ本を読んだ人は必ずいる。いま在学している生徒どうしだけでなく、
+何年も前に卒業した先輩の言葉にも出会える場所をつくる。名前は「ノスタルジー」から取っている。
+
+## コンセプト
+
+- **SNS ではない。** やりとりではなく「残す」ことに寄せる
+- **書く前に、先輩の感想は読めない。** 書き終えた瞬間に開く。先に読むと自分の言葉が痩せるため
+- **卒業してもカードは残る。** 止まるのはアカウントだけ
+
+## 決まっていること
+
+| 論点 | 決定 |
+| --- | --- |
+| 対象 | 中高一貫（6年制）の学校図書館 |
+| データ構造 | 作品(ISBN) — 蔵書1冊(NTAG) — 感想 の3層 |
+| 名乗り | 入学年度＋ペンネーム（実名は使わない） |
+| 端末 | 図書館の据置端末＋生徒の個人スマホの併用 |
+| 入力 | 自由文＋「心に残った一節」の引用（任意） |
+| 出会い方 | 作品検索・一覧からたどる |
+| 公開前チェック | 事後型（即公開＋通報＋司書の管理画面） |
+| 卒業後 | 感想は残る／アカウントは停止 |
+| タグ運用 | 感想が書かれた本に後から NTAG を貼る |
+| 認証 | 学校の Google アカウント（ドメイン制限） |
+| 書ける条件 | 貸し出した本だけ。同じ本への複数回投稿は可 |
+| 編集・削除 | 投稿から一定期間は自由、以降は確定 |
+
+## 実装の状態
+
+第1フェーズ「画面・世界観の試作」。**データはすべてモックで、DB も認証もまだない。**
+図書カード（本の巻末に挟まっていた貸出カード）をモチーフにしている。
+
+### 画面
+
+| URL | 画面 |
+| --- | --- |
+| `/login` | ログイン（Google 想定。試作では素通り） |
+| `/` | ホーム。いま借りている本＝書ける本 |
+| `/search` | さがす |
+| `/works/[id]` | 作品ページ。未投稿ならカードは伏せたまま |
+| `/works/[id]/write` | 記入 |
+| `/works/[id]/opened` | 開錠。投稿直後に先輩のカードが開く |
+| `/me` | じぶんの記録 |
+| `/c/[token]` | NTAG をかざしたときの入口。作品ページへ転送 |
+
+### 触りどころ
+
+`/works/w-ginga` は未投稿、`/works/w-sangetsu` は投稿済みの状態で入っている。
+`/works/w-lemon` はまだ誰も感想を書いていない本。
+
+## 技術メモ
+
+### NTAG はアプリ不要で読める
+
+タグには URL（`/c/<token>`）を書き込む。iPhone / Android とも OS 標準のバックグラウンドタグ読み取りで
+ブラウザが開くため、Web NFC API（Android Chrome 限定）にもネイティブアプリにも依存しない。
+
+**iPad と大半の Chromebook には NFC リーダーがない。** GIGA 端末ではタグをかざす動作自体ができないので、
+読み取り経路は個人スマホか、図書館の据置端末＋USB NFC リーダーに限られる。
+
+トークンには NFC の UID を使わない。UID は読み取りも複製もできるため、蔵書レコード側に別途発行する。
+
+### 伏せる処理はサーバー側でやる
+
+未投稿の作品ページには、先輩の感想を HTML に一切出力しない。CSS で隠すだけでは開発者ツールから読めてしまい、
+「書いた人だけが読める」という前提が崩れるため。
+
+### 学年は投稿時点のものを保存する
+
+表示は「高2のとき」。書いた人が今どうなったかではなく、書いた時点の姿を残す。
+学年度は4月始まりで計算するので、1〜3月の投稿も前年度として扱われる（`lib/school.ts`）。
+
+## 動かし方
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 を開く。投稿はメモリ上に積まれるだけなので、サーバを再起動すると初期状態に戻る。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 構成
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  components/     図書カード、感想1件、伏せ札などの共通部品
+  works/[id]/     作品ページ・記入・開錠
+  c/[token]/      NTAG の受け口
+lib/
+  types.ts        作品 / 蔵書1冊 / 生徒 / 感想 / 貸出
+  mock-data.ts    試作用データとメモリストア
+  school.ts       学年度・学年ラベル・日付印
+  actions.ts      感想の投稿（Server Action）
+```
 
-## Learn More
+Next.js 16（App Router）/ React 19 / Tailwind CSS v4 / TypeScript。
 
-To learn more about Next.js, take a look at the following resources:
+## これから決めること
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **貸出記録をどう取るか。** 「貸し出した本だけ書ける」を成立させるには図書館システムとの連携が要る。
+  CSV 取り込みか、API か、貸出時に NTAG をかざす運用にするか
+- 司書の管理画面（非表示操作・通報の確認・タグ登録）
+- 据置端末の扱い（読む＝ログイン不要／書く＝ログイン必要＋自動サインアウト）
+- 書誌データの取得（openBD を主軸に、無い本は国立国会図書館サーチで補完）
+- 実際の導入先校とホスティング
