@@ -3,9 +3,12 @@ import type {
   BorrowedBook,
   Copy,
   Loan,
+  Report,
+  ReportWithReview,
   Review,
   ReviewWithAuthor,
   Student,
+  UntaggedCopy,
   Work,
 } from "./types";
 
@@ -145,6 +148,7 @@ const reviews: Review[] = [
     body: "二回目に読んだら、カムパネルラがいつからいなかったのかが分かってしまって、一回目より息が苦しかった。最初に読んだときは、ただきれいな話だと思っていた。同じ本なのに、読む人が変わると別の本になる。",
     quote: { text: "ほんとうのさいわい", page: 212 },
     postedAt: "2019-11-08",
+    hidden: false,
   },
   {
     id: "r-2",
@@ -155,6 +159,7 @@ const reviews: Review[] = [
     body: "電車の窓の外はずっと暗いのに、ページの上はずっと明るい。自習室で読んでいたら外も暗くなっていて、顔を上げたとき自分がどこにいるのか一瞬わからなかった。あの感じのために、たぶんまた読む。",
     quote: null,
     postedAt: "2022-09-14",
+    hidden: false,
   },
   {
     id: "r-3",
@@ -165,6 +170,7 @@ const reviews: Review[] = [
     body: "読み終えてから、しばらく返却カウンターに行けなかった。返したら終わってしまう気がして、結局そのまま延長した。",
     quote: { text: "ほんとうのさいわい", page: 212 },
     postedAt: "2024-10-11",
+    hidden: false,
   },
   {
     id: "r-4",
@@ -175,6 +181,7 @@ const reviews: Review[] = [
     body: "先生はずるいと思った。でも、自分もたぶん同じことをする。それが分かってしまったのがいちばん嫌だった。",
     quote: { text: "私はその人を常に先生と呼んでいた。", page: 5 },
     postedAt: "2021-01-30",
+    hidden: false,
   },
   {
     id: "r-5",
@@ -185,6 +192,7 @@ const reviews: Review[] = [
     body: "上と中を読んでいるあいだは退屈だと思っていたのに、下でぜんぶ意味が変わった。退屈だと思っていた自分ごと、下に回収された感じがする。",
     quote: null,
     postedAt: "2023-07-19",
+    hidden: false,
   },
   {
     id: "r-6",
@@ -195,6 +203,7 @@ const reviews: Review[] = [
     body: "授業で読まされたときはまったくピンとこなかったのに、テストが終わってから自分で読み返したらこわくなった。",
     quote: { text: "臆病な自尊心と尊大な羞恥心", page: 14 },
     postedAt: "2017-06-22",
+    hidden: false,
   },
   {
     id: "r-7",
@@ -205,6 +214,7 @@ const reviews: Review[] = [
     body: "書いたものを人に見せるのが怖いのは、下手だと思われるのが怖いんじゃなくて、本気だとばれるのが怖いからだと気づいた。",
     quote: null,
     postedAt: "2020-05-02",
+    hidden: false,
   },
   {
     id: "r-8",
@@ -215,6 +225,7 @@ const reviews: Review[] = [
     body: "虎になった理由が、才能がなかったからではなく、才能があるかどうかを確かめなかったからだ、というところがいちばんこたえた。",
     quote: null,
     postedAt: "2021-12-03",
+    hidden: false,
   },
   {
     id: "r-9",
@@ -225,6 +236,7 @@ const reviews: Review[] = [
     body: "李徴の言い訳が、自分の言い訳とおなじ言い方をしていた。読み終わってから、机の上に置いたままの提出物を見るのがいやになった。",
     quote: { text: "臆病な自尊心と尊大な羞恥心", page: 14 },
     postedAt: "2026-07-15",
+    hidden: false,
   },
   {
     id: "r-10",
@@ -235,6 +247,7 @@ const reviews: Review[] = [
     body: "明るく振る舞うほど人から遠くなる、というのが分かりすぎて、途中で本を閉じた。次の日にちゃんと続きを読んだ。",
     quote: { text: "恥の多い生涯を送って来ました。", page: 9 },
     postedAt: "2025-06-05",
+    hidden: false,
   },
   {
     id: "r-11",
@@ -245,6 +258,7 @@ const reviews: Review[] = [
     body: "走るのがきらいだったのに、読み終わったら少しだけ走ってみたくなった。次の日の朝に実際に走って、三分でやめた。それでも読む前とは違う。",
     quote: null,
     postedAt: "2023-02-17",
+    hidden: false,
   },
   {
     id: "r-12",
@@ -255,6 +269,23 @@ const reviews: Review[] = [
     body: "十人ぜんぶに好きなところがあるのがずるい。誰か一人に決められないまま最後まで来てしまった。",
     quote: null,
     postedAt: "2024-05-20",
+    hidden: false,
+  },
+];
+
+/** 感想への通報。司書が確認するまでキューに残る */
+const reports: Report[] = [
+  {
+    id: "rep-1",
+    reviewId: "r-9",
+    reason: "個人が特定できそうな内容が含まれている",
+    reportedAt: "2026-07-20",
+  },
+  {
+    id: "rep-2",
+    reviewId: "r-11",
+    reason: "本の内容と関係ない書き込みに見える",
+    reportedAt: "2026-07-25",
   },
 ];
 
@@ -303,16 +334,16 @@ export function hasWritten(studentId: string, workId: string): boolean {
   return reviews.some((r) => r.studentId === studentId && r.workId === workId);
 }
 
-/** その作品の感想を、古い順（先輩から）に並べる */
+/** その作品の感想を、古い順（先輩から）に並べる。非表示にした感想は出さない */
 export function getReviewsForWork(workId: string): ReviewWithAuthor[] {
   return reviews
-    .filter((r) => r.workId === workId)
+    .filter((r) => r.workId === workId && !r.hidden)
     .sort((a, b) => a.postedAt.localeCompare(b.postedAt))
     .map((r) => ({ ...r, author: getStudent(r.studentId) }));
 }
 
 export function countReviews(workId: string): number {
-  return reviews.filter((r) => r.workId === workId).length;
+  return reviews.filter((r) => r.workId === workId && !r.hidden).length;
 }
 
 export function getReview(reviewId: string): ReviewWithAuthor | undefined {
@@ -361,7 +392,73 @@ export function addReview(input: {
     body: input.body,
     quote: input.quote,
     postedAt: now.toISOString().slice(0, 10),
+    hidden: false,
   };
   reviews.push(review);
   return review;
+}
+
+/* ------------------------------------------------------------------ */
+/* 司書向け                                                            */
+/* ------------------------------------------------------------------ */
+
+/** 未対応の通報。新しい順 */
+export function getReports(): ReportWithReview[] {
+  return reports
+    .slice()
+    .sort((a, b) => b.reportedAt.localeCompare(a.reportedAt))
+    .flatMap((report) => {
+      const review = getReview(report.reviewId);
+      if (!review) return [];
+      return [{ ...report, review }];
+    });
+}
+
+export function countReports(): number {
+  return reports.length;
+}
+
+/** 通報を却下する。感想はそのまま残る */
+export function dismissReport(reportId: string): void {
+  const index = reports.findIndex((r) => r.id === reportId);
+  if (index === -1) throw new Error(`不明な通報: ${reportId}`);
+  reports.splice(index, 1);
+}
+
+/** 通報された感想を非表示にし、通報自体もキューから外す */
+export function hideReportedReview(reportId: string): void {
+  const report = reports.find((r) => r.id === reportId);
+  if (!report) throw new Error(`不明な通報: ${reportId}`);
+  const review = reviews.find((r) => r.id === report.reviewId);
+  if (!review) throw new Error(`不明な感想: ${report.reviewId}`);
+  review.hidden = true;
+  dismissReport(reportId);
+}
+
+/**
+ * 感想がついているのに NTAG がまだ貼られていない蔵書。
+ * 司書がタグを貼ったあと、ここでトークンを登録する。
+ */
+export function getUntaggedCopies(): UntaggedCopy[] {
+  return copies
+    .filter((c) => c.tagToken === null)
+    .flatMap((copy) => {
+      const reviewCount = reviews.filter((r) => r.copyId === copy.id).length;
+      if (reviewCount === 0) return [];
+      const work = getWork(copy.workId);
+      if (!work) return [];
+      return [{ copy, work, reviewCount }];
+    });
+}
+
+export function countUntaggedCopies(): number {
+  return getUntaggedCopies().length;
+}
+
+/** NTAG に書き込んだトークンを蔵書に登録する */
+export function registerTag(copyId: string, token: string): void {
+  const copy = getCopy(copyId);
+  if (!copy) throw new Error(`不明な蔵書: ${copyId}`);
+  if (copy.tagToken !== null) throw new Error("すでにタグが登録されています");
+  copy.tagToken = token;
 }

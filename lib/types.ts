@@ -47,6 +47,29 @@ export type Review = {
   quote: Quote | null;
   /** ISO 8601 の日付 */
   postedAt: string;
+  /** 司書が非表示にした感想か */
+  hidden: boolean;
+};
+
+/** 感想への通報。司書が確認して非表示にするか却下する */
+export type Report = {
+  id: string;
+  reviewId: string;
+  reason: string;
+  /** ISO 8601 の日付 */
+  reportedAt: string;
+};
+
+/** 通報と、その対象の感想 */
+export type ReportWithReview = Report & {
+  review: ReviewWithAuthor;
+};
+
+/** タグ未登録の蔵書。感想がついているのに NTAG がまだ貼られていない1冊 */
+export type UntaggedCopy = {
+  copy: Copy;
+  work: Work;
+  reviewCount: number;
 };
 
 /** 貸出。感想は借りた本にだけ書ける */

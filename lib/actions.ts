@@ -1,7 +1,15 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { addReview, CURRENT_STUDENT_ID, getBorrowedBooks } from "./mock-data";
+import {
+  addReview,
+  CURRENT_STUDENT_ID,
+  dismissReport,
+  getBorrowedBooks,
+  hideReportedReview,
+  registerTag,
+} from "./mock-data";
 
 export async function postReview(formData: FormData) {
   const workId = String(formData.get("workId") ?? "");
@@ -32,4 +40,33 @@ export async function postReview(formData: FormData) {
   });
 
   redirect(`/works/${workId}/opened?r=${review.id}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* 司書向け                                                            */
+/* ------------------------------------------------------------------ */
+
+export async function dismissReportAction(formData: FormData) {
+  const reportId = String(formData.get("reportId") ?? "");
+  dismissReport(reportId);
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+}
+
+export async function hideReportedReviewAction(formData: FormData) {
+  const reportId = String(formData.get("reportId") ?? "");
+  hideReportedReview(reportId);
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+}
+
+export async function registerTagAction(formData: FormData) {
+  const copyId = String(formData.get("copyId") ?? "");
+  const token = String(formData.get("token") ?? "").trim();
+  if (!token) {
+    throw new Error("トークンが空です");
+  }
+  registerTag(copyId, token);
+  revalidatePath("/admin/tags");
+  revalidatePath("/admin");
 }
