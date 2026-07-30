@@ -45,6 +45,9 @@
 | `/works/[id]/opened` | 開錠。投稿直後に先輩のカードが開く |
 | `/me` | じぶんの記録 |
 | `/c/[token]` | NTAG をかざしたときの入口。作品ページへ転送 |
+| `/admin` | 司書用ダッシュボード。Basic 認証が必要（後述） |
+| `/admin/reports` | 通報の確認。非表示にする／却下する |
+| `/admin/tags` | タグ登録待ちの蔵書一覧 |
 
 ### 触りどころ
 
@@ -73,14 +76,23 @@
 表示は「高2のとき」。書いた人が今どうなったかではなく、書いた時点の姿を残す。
 学年度は4月始まりで計算するので、1〜3月の投稿も前年度として扱われる（`lib/school.ts`）。
 
+### /admin は暫定で Basic 認証をかけている
+
+本来の認証（学校の Google アカウント・ドメイン制限）が入るまでの間、`/admin` 配下だけ
+`proxy.ts` で Basic 認証をかけている。通報された感想には個人が特定できる内容が含まれうるため、
+誰でも読める状態のまま置いておけない。`ADMIN_BASIC_AUTH_PASSWORD` が未設定の環境では、
+安全側に倒して `/admin` 配下を全て 503 で拒否する。
+
 ## 動かし方
 
 ```bash
 npm install
+cp .env.local.example .env.local  # ADMIN_BASIC_AUTH_PASSWORD を設定する
 npm run dev
 ```
 
 http://localhost:3000 を開く。投稿はメモリ上に積まれるだけなので、サーバを再起動すると初期状態に戻る。
+`/admin` 配下を開くには `.env.local` の `ADMIN_BASIC_AUTH_PASSWORD` が必要（未設定なら 503）。
 
 ## 構成
 
