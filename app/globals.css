@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  /* 机の上 —— 画面全体の下地 */
+  --color-desk: #e8dfca;
+  --color-desk-deep: #d8cbad;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* 図書カードの紙 */
+  --color-paper: #fbf7ec;
+  --color-paper-aged: #f4ecd9;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* 罫線・枠 */
+  --color-rule: #c9bc9d;
+  --color-rule-soft: #e2d8bf;
+
+  /* インク */
+  --color-ink: #2b2621;
+  --color-ink-soft: #6f6555;
+  --color-ink-faint: #a2977f;
+
+  /* 日付印の朱 */
+  --color-stamp: #a63c26;
+
+  /* 記入欄の藍 */
+  --color-navy: #2a3d55;
+
+  --font-serif-jp: var(--font-noto-serif-jp), "Hiragino Mincho ProN", "Yu Mincho",
+    serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-desk);
+  background-image: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    #f1e9d6 0%,
+    transparent 70%
+  );
+  color: var(--color-ink);
+  font-family: var(--font-serif-jp);
+}
+
+/* 図書カードの記入欄に引かれた横罫 */
+.card-rules {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 1.75rem,
+    var(--color-rule-soft) 1.75rem calc(1.75rem + 1px)
+  );
+}
+
+/* 伏せたカードの裏面 —— 斜めの地紋で「読めない」ことを示す */
+.card-back {
+  background-color: var(--color-paper-aged);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 6px,
+    rgb(0 0 0 / 0.035) 6px 7px
+  );
+}
+
+/* 日付印がめくれて開く —— 開錠画面の演出 */
+@keyframes card-unseal {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) rotate(-1.2deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.animate-unseal {
+  animation: card-unseal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-unseal {
+    animation: none;
+  }
 }

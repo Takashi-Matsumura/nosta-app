@@ -1,0 +1,73 @@
+/** 作品。同じ本が複数冊あっても作品は1つ */
+export type Work = {
+  id: string;
+  isbn: string;
+  title: string;
+  author: string;
+  publisher: string;
+  publishedYear: number;
+  /** 請求記号 */
+  callNumber: string;
+};
+
+/** 蔵書1冊。棚にある物理的な1冊にあたる */
+export type Copy = {
+  id: string;
+  workId: string;
+  barcode: string;
+  /**
+   * NTAG に書き込む不変トークン。NFC の UID は複製できるため直接は使わない。
+   * 感想が書かれた本に後から貼るので、未貼付のあいだは null。
+   */
+  tagToken: string | null;
+};
+
+export type Student = {
+  id: string;
+  penName: string;
+  /** 入学年度。表示は「2021年入学」 */
+  entranceYear: number;
+};
+
+/** 心に残った一節 */
+export type Quote = {
+  text: string;
+  page: number;
+};
+
+export type Review = {
+  id: string;
+  workId: string;
+  /** どの1冊を読んで書いたか */
+  copyId: string;
+  studentId: string;
+  /** 投稿時の学年。1=中1 … 6=高3 */
+  gradeAtPost: number;
+  body: string;
+  quote: Quote | null;
+  /** ISO 8601 の日付 */
+  postedAt: string;
+};
+
+/** 貸出。感想は借りた本にだけ書ける */
+export type Loan = {
+  id: string;
+  copyId: string;
+  studentId: string;
+  borrowedAt: string;
+  returnedAt: string | null;
+};
+
+/** 画面に渡す、1冊ぶんのまとまり */
+export type BorrowedBook = {
+  loan: Loan;
+  copy: Copy;
+  work: Work;
+  /** この生徒がこの作品に既に感想を残しているか */
+  hasWritten: boolean;
+};
+
+/** 感想と、その書き手 */
+export type ReviewWithAuthor = Review & {
+  author: Student;
+};
