@@ -24,8 +24,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname.startsWith("/admin") && session.user.role !== "librarian") {
+  const isAdminPath = pathname.startsWith("/admin");
+  if (isAdminPath && session.user.role !== "librarian") {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+  // 司書アカウントは生徒向けページを見る理由が無いので、常に /admin に集約する
+  if (!isAdminPath && session.user.role === "librarian") {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return NextResponse.next();

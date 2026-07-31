@@ -43,6 +43,8 @@ export type Review = {
   studentId: string;
   /** 投稿時の学年。1=中1 … 6=高3 */
   gradeAtPost: number;
+  /** 投稿時のペンネーム。本人が後で改名しても、この感想の表示は変わらない */
+  penNameAtPost: string;
   body: string;
   quote: Quote | null;
   /** ISO 8601 の日付 */
@@ -93,4 +95,15 @@ export type BorrowedBook = {
 /** 感想と、その書き手 */
 export type ReviewWithAuthor = Review & {
   author: Student;
+};
+
+export type Role = "student" | "librarian";
+
+/** ログインできるアカウント。role: student の場合のみ生徒プロフィールを伴う */
+export type UserAccount = {
+  id: string;
+  email: string;
+  role: Role;
+  penName: string | null;
+  entranceYear: number | null;
 };

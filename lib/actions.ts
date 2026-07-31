@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { requireLibrarian, requireStudent, signOut } from "./auth";
 import {
   addReview,
+  addUser,
   dismissReport,
   getBorrowedBooks,
   hideReportedReview,
   registerTag,
+  updatePenName,
 } from "./data";
 
 export async function postReview(formData: FormData) {
@@ -48,6 +50,17 @@ export async function signOutAction() {
   await signOut({ redirectTo: "/login" });
 }
 
+export async function updatePenNameAction(formData: FormData) {
+  const student = await requireStudent();
+  const penName = String(formData.get("penName") ?? "").trim();
+  if (!penName) {
+    throw new Error("ペンネームが空です");
+  }
+  await updatePenName(student.id, penName);
+  revalidatePath("/me");
+  revalidatePath("/");
+}
+
 /* ------------------------------------------------------------------ */
 /* 司書向け                                                            */
 /* ------------------------------------------------------------------ */
@@ -78,4 +91,33 @@ export async function registerTagAction(formData: FormData) {
   await registerTag(copyId, token);
   revalidatePath("/admin/tags");
   revalidatePath("/admin");
+}
+
+export async function addUserAction(formData: FormData) {
+  await requireLibrarian();
+
+  const email = String(formData.get("email") ?? "").trim();
+  const role = String(formData.get("role") ?? "");
+  if (!email.includes("@")) {
+    throw new Error("メールアドレスが不正です");
+  }
+  if (role !== "student" && role !== "librarian") {
+    throw new Error("役割が不正です");
+  }
+  const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN;
+  if (allowedDomain && !email.endsWith(`@${allowedDomain}`)) {
+    throw new Error(`${allowedDomain} のメールアドレスではありません`);
+  }
+
+  if (role === "student") {
+    const penName = String(formData.get("penName") ?? "").trim();
+    const entranceYear = Number(formData.get("entranceYear"));
+    if (!penName) throw new Error("ペンネームが空です");
+    if (!Number.isFinite(entranceYear)) throw new Error("入学年度が不正です");
+    await addUser({ email, role, penName, entranceYear });
+  } else {
+    await addUser({ email, role });
+  }
+
+  revalidatePath("/admin/users");
 }

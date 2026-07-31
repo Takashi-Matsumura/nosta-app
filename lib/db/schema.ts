@@ -80,6 +80,8 @@ export const reviews = pgTable("reviews", {
     .references(() => students.id, { onDelete: "cascade" }),
   /** 投稿時の学年。1=中1 … 6=高3 */
   gradeAtPost: integer("grade_at_post").notNull(),
+  /** 投稿時のペンネーム。後で本人が改名しても、この感想の表示は変わらない */
+  penNameAtPost: text("pen_name_at_post").notNull(),
   body: text("body").notNull(),
   quoteText: text("quote_text"),
   quotePage: integer("quote_page"),

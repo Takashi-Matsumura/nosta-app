@@ -9,8 +9,10 @@ import type {
   ReportWithReview,
   Review,
   ReviewWithAuthor,
+  Role,
   Student,
   UntaggedCopy,
+  UserAccount,
   Work,
 } from "./types";
 
@@ -21,6 +23,7 @@ function toReview(row: typeof reviews.$inferSelect): Review {
     copyId: row.copyId,
     studentId: row.studentId,
     gradeAtPost: row.gradeAtPost,
+    penNameAtPost: row.penNameAtPost,
     body: row.body,
     quote: row.quoteText !== null ? { text: row.quoteText, page: row.quotePage ?? 0 } : null,
     postedAt: row.postedAt,
@@ -50,6 +53,15 @@ export async function getStudent(studentId: string): Promise<Student> {
   const [student] = await db.select().from(students).where(eq(students.id, studentId)).limit(1);
   if (!student) throw new Error(`不明な生徒: ${studentId}`);
   return student;
+}
+
+/**
+ * 生徒本人がペンネームを変える。過去の感想は penNameAtPost を持っているので、
+ * ここでの変更は今後の表示（ホーム・じぶんの記録の見出し等）にのみ反映される。
+ */
+export async function updatePenName(studentId: string, penName: string): Promise<void> {
+  const db = getDb();
+  await db.update(students).set({ penName }).where(eq(students.id, studentId));
 }
 
 export async function getWork(workId: string): Promise<Work | undefined> {
@@ -191,6 +203,7 @@ export async function addReview(input: {
     copyId: input.copyId,
     studentId: input.studentId,
     gradeAtPost: gradeAt(student.entranceYear, now),
+    penNameAtPost: student.penName,
     body: input.body,
     quoteText: input.quote?.text ?? null,
     quotePage: input.quote?.page ?? null,
@@ -274,4 +287,54 @@ export async function registerTag(copyId: string, token: string): Promise<void> 
   if (!copy) throw new Error(`不明な蔵書: ${copyId}`);
   if (copy.tagToken !== null) throw new Error("すでにタグが登録されています");
   await db.update(copies).set({ tagToken: token }).where(eq(copies.id, copyId));
+}
+
+/* ------------------------------------------------------------------ */
+/* 司書向け: ユーザー管理                                                */
+/* ------------------------------------------------------------------ */
+
+/** ログインできるアカウントの一覧。メールアドレス順 */
+export async function getAllUsers(): Promise<UserAccount[]> {
+  const db = getDb();
+  return db
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      penName: students.penName,
+      entranceYear: students.entranceYear,
+    })
+    .from(users)
+    .leftJoin(students, eq(students.id, users.id))
+    .orderBy(users.email);
+}
+
+/**
+ * ログインできるアカウントを追加する。role: student の場合は
+ * ペンネームと入学年度が必須で、students のプロフィールも同時に作る。
+ */
+export async function addUser(input: {
+  email: string;
+  role: Role;
+  penName?: string;
+  entranceYear?: number;
+}): Promise<void> {
+  const db = getDb();
+  const existing = await getUserByEmail(input.email);
+  if (existing) throw new Error("このメールアドレスは既に登録されています");
+  if (input.role === "student" && (!input.penName || !input.entranceYear)) {
+    throw new Error("生徒にはペンネームと入学年度が必要です");
+  }
+
+  const id = `u-${randomUUID()}`;
+  await db.transaction(async (tx) => {
+    await tx.insert(users).values({ id, email: input.email, role: input.role });
+    if (input.role === "student") {
+      await tx.insert(students).values({
+        id,
+        penName: input.penName!,
+        entranceYear: input.entranceYear!,
+      });
+    }
+  });
 }

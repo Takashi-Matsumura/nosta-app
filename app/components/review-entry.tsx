@@ -24,7 +24,7 @@ export function ReviewEntry({
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
         <span className="text-sm">
-          {authorLabel(review.author.entranceYear, review.author.penName)}
+          {authorLabel(review.author.entranceYear, review.penNameAtPost)}
         </span>
         <span className="rounded-sm border border-rule px-1.5 py-px text-[0.7rem] text-ink-soft">
           {gradeLabel(review.gradeAtPost)}のとき
