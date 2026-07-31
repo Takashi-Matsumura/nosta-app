@@ -96,6 +96,13 @@ export const reports = pgTable("reports", {
   reviewId: text("review_id")
     .notNull()
     .references(() => reviews.id, { onDelete: "cascade" }),
+  /**
+   * 通報した生徒。悪用調査・重複通報の抑止のためだけに持ち、司書向け画面には出さない。
+   * seed投入分など由来が無いデータもあるため nullable。
+   */
+  reporterId: text("reporter_id").references(() => students.id, {
+    onDelete: "cascade",
+  }),
   reason: text("reason").notNull(),
   reportedAt: date("reported_at").notNull(),
 });

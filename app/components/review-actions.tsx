@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { deleteReviewAction } from "@/lib/actions";
+import { deleteReviewAction, reportReviewAction } from "@/lib/actions";
 import { isEditable } from "@/lib/school";
 import type { ReviewWithAuthor } from "@/lib/types";
 
@@ -11,12 +11,53 @@ export function ReviewActions({
   review,
   isMine,
   now,
+  workId,
+  reported = false,
 }: {
   review: ReviewWithAuthor;
   isMine: boolean;
   now: Date;
+  workId?: string;
+  reported?: boolean;
 }) {
-  if (!isMine) return null;
+  if (!isMine) {
+    if (reported) {
+      return (
+        <p className="text-[0.7rem] text-ink-faint">
+          通報しました。司書が確認します。
+        </p>
+      );
+    }
+    return (
+      <details className="text-[0.7rem]">
+        <summary className="cursor-pointer text-ink-soft underline underline-offset-4">
+          通報する
+        </summary>
+        <form action={reportReviewAction} className="mt-2 max-w-sm">
+          <input type="hidden" name="reviewId" value={review.id} />
+          <input type="hidden" name="workId" value={workId} />
+          <textarea
+            name="reason"
+            required
+            rows={3}
+            placeholder="気になったところを、そのまま書いてください。"
+            className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-xs leading-relaxed outline-none placeholder:text-ink-faint focus:border-ink-soft"
+          />
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <p className="text-ink-faint">
+              司書だけが読みます。書いた人には知らされません。
+            </p>
+            <button
+              type="submit"
+              className="shrink-0 rounded-sm border border-rule bg-paper px-3 py-1 text-ink-soft transition-colors hover:bg-paper-aged"
+            >
+              送信する
+            </button>
+          </div>
+        </form>
+      </details>
+    );
+  }
 
   if (review.hidden) {
     return (
