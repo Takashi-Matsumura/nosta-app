@@ -27,6 +27,9 @@ export function AdminHeader() {
           <Link href="/admin/loans" className="hover:text-paper">
             貸出
           </Link>
+          <Link href="/admin/works" className="hover:text-paper">
+            蔵書
+          </Link>
           <Link href="/admin/users" className="hover:text-paper">
             ユーザー
           </Link>

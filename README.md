@@ -58,6 +58,7 @@
 | `/admin/reports` | 通報の確認。非表示にする／却下する |
 | `/admin/tags` | タグ登録待ちの蔵書一覧 |
 | `/admin/loans` | 貸出。生徒を選んで NTAG／バーコードから貸出・返却 |
+| `/admin/works` | 蔵書。ISBN から openBD で書誌を取り込んで登録 |
 | `/admin/users` | ログインできるアカウントの登録・一覧 |
 
 ### 触りどころ
@@ -121,6 +122,19 @@ NTAG は「感想が書かれた後に貼る」運用のため、貸出時点で
 一方 `/works/[id]` の「カードを書く」ボタンや投稿の可否は `getWritableLoan` で判定し、
 返却後の猶予期間も含む。感想を書けるかどうかと、いま手元にあるかどうかは別々に判定している。
 
+### 書誌データは openBD から取得する。このアプリ初の外部通信
+
+`/admin/works` は ISBN を GET クエリで受け、Server Component がその場で `lib/openbd.ts` の
+`fetchBook` を呼んで結果を描画する（登録の確定だけ `addWorkAction` という Server Action）。
+照会を Server Action にしなかったのは、本番ビルドでは Server Action の例外メッセージが
+伏せられてしまい、「ISBN の打ち間違い」のような日常的な結果を伝えられなくなるため。
+見つからない・接続できない場合もエラー画面にはならず、通常の描画として案内を出す。
+
+openBD は未知の ISBN でも 200 で `[null]` を返すため、`res.ok` だけでは判定できない。
+`fetch` には `AbortSignal.timeout(5000)` を付けており、外部サービスが詰まっても
+画面が固まらないようにしている。請求記号・バーコードは openBD には無いので、
+確認カードを見ながら司書が手で入力する。
+
 ### ログインは proxy.ts で全ページに強制している
 
 `proxy.ts`（Next.js 16 で middleware から改称）で、`/login` と NextAuth の内部エンドポイント以外の
@@ -178,13 +192,14 @@ app/
   works/[id]/         作品ページ・記入・開錠
   reviews/[id]/edit/  感想の書き直し
   c/[token]/          NTAG の受け口
-  admin/              司書用ダッシュボード・通報・タグ登録・貸出・ユーザー登録
+  admin/              司書用ダッシュボード・通報・タグ登録・貸出・蔵書・ユーザー登録
   api/auth/[...nextauth]/  NextAuth のエンドポイント
 lib/
   types.ts        作品 / 蔵書1冊 / 生徒 / 感想 / 貸出 の型
   data.ts         DB クエリ（旧 mock-data.ts の置き換え）
   auth.ts         NextAuth 設定・requireStudent/requireLibrarian
   school.ts       学年度・学年ラベル・日付印
+  openbd.ts       openBD API から書誌を取得する
   actions.ts      感想の投稿・司書操作・サインアウト（Server Action）
   db/
     schema.ts     Drizzle スキーマ
@@ -196,6 +211,5 @@ Next.js 16（App Router）/ React 19 / Tailwind CSS v4 / TypeScript / PostgreSQL
 
 ## 決まったが、まだ実装していないこと
 
-- **書誌データの openBD 連携。** ISBN を入力して書誌情報を自動取得する仕組み、そもそも作品を新規登録する画面自体がまだ無い（今の6冊は seed 投入のみ）
 - **アカウントの CSV 一括登録。** 当面は `/admin/users` で1件ずつ登録する運用でよいとしたため、優先度は低い
 - **実際の導入校とホスティング。** 導入したい学校のイメージはあるが未確定。本番用 DB・Google OAuth クライアントの用意はその後
