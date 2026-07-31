@@ -9,6 +9,7 @@ import {
   hasWritten,
 } from "@/lib/data";
 import { LibraryCard } from "@/app/components/library-card";
+import { ReviewActions } from "@/app/components/review-actions";
 import { ReviewEntry } from "@/app/components/review-entry";
 import { SealedNotice } from "@/app/components/sealed-notice";
 import { SiteHeader } from "@/app/components/site-header";
@@ -37,14 +38,20 @@ export default async function WorkPage({
         <LibraryCard work={work} tagged={await hasTaggedCopy(work.id)}>
           {opened ? (
             <ol className="divide-y divide-rule-soft">
-              {reviews.map((review) => (
-                <ReviewEntry
-                  key={review.id}
-                  review={review}
-                  now={now}
-                  isMine={review.studentId === student.id}
-                />
-              ))}
+              {reviews.map((review) => {
+                const isMine = review.studentId === student.id;
+                return (
+                  <ReviewEntry
+                    key={review.id}
+                    review={review}
+                    now={now}
+                    isMine={isMine}
+                    actions={
+                      <ReviewActions review={review} isMine={isMine} now={now} />
+                    }
+                  />
+                );
+              })}
             </ol>
           ) : (
             <SealedNotice count={reviews.length} />

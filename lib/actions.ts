@@ -6,11 +6,13 @@ import { requireLibrarian, requireStudent, signOut } from "./auth";
 import {
   addReview,
   addUser,
+  deleteReview,
   dismissReport,
   getBorrowedBooks,
   hideReportedReview,
   registerTag,
   updatePenName,
+  updateReview,
 } from "./data";
 
 export async function postReview(formData: FormData) {
@@ -59,6 +61,41 @@ export async function updatePenNameAction(formData: FormData) {
   await updatePenName(student.id, penName);
   revalidatePath("/me");
   revalidatePath("/");
+}
+
+export async function updateReviewAction(formData: FormData) {
+  const student = await requireStudent();
+
+  const reviewId = String(formData.get("reviewId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const quoteText = String(formData.get("quoteText") ?? "").trim();
+  const quotePage = Number(formData.get("quotePage"));
+
+  if (!body) {
+    throw new Error("感想が空です");
+  }
+
+  const review = await updateReview(reviewId, student.id, {
+    body,
+    quote: quoteText
+      ? { text: quoteText, page: Number.isFinite(quotePage) ? quotePage : 0 }
+      : null,
+  });
+
+  redirect(`/works/${review.workId}`);
+}
+
+export async function deleteReviewAction(formData: FormData) {
+  const student = await requireStudent();
+  const reviewId = String(formData.get("reviewId") ?? "");
+
+  const review = await deleteReview(reviewId, student.id);
+
+  revalidatePath(`/works/${review.workId}`);
+  revalidatePath("/me");
+  revalidatePath("/admin");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin/tags");
 }
 
 /* ------------------------------------------------------------------ */

@@ -33,3 +33,24 @@ export function stampDate(iso: string): string {
 export function yearsAgo(iso: string, now: Date): number {
   return schoolYearOf(now) - schoolYearOf(new Date(iso));
 }
+
+/** 投稿から直せる期間（日） */
+export const EDITABLE_DAYS = 7;
+
+/** 日付文字列（YYYY-MM-DD）から now までの暦日の差。タイムゾーンで1日ずれないよう UTC で揃える */
+function daysSince(isoDate: string, now: Date): number {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const posted = Date.UTC(y, m - 1, d);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((today - posted) / (1000 * 60 * 60 * 24));
+}
+
+/** 投稿から EDITABLE_DAYS 以内なら、まだ直せる */
+export function isEditable(postedAt: string, now: Date): boolean {
+  return daysSince(postedAt, now) <= EDITABLE_DAYS;
+}
+
+/** 直せる期限まであと何日か。「あとN日は直せます」の表示用 */
+export function editableDaysLeft(postedAt: string, now: Date): number {
+  return Math.max(0, EDITABLE_DAYS - daysSince(postedAt, now));
+}
