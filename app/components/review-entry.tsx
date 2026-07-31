@@ -8,12 +8,14 @@ export function ReviewEntry({
   isMine = false,
   className = "",
   style,
+  actions,
 }: {
   review: ReviewWithAuthor;
   now: Date;
   isMine?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  actions?: React.ReactNode;
 }) {
   const ago = yearsAgo(review.postedAt, now);
 
@@ -52,6 +54,12 @@ export function ReviewEntry({
 
       {ago > 0 && (
         <p className="mt-4 text-[0.7rem] text-ink-faint">{ago}年前の記録</p>
+      )}
+
+      {actions && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+          {actions}
+        </div>
       )}
     </li>
   );

@@ -3,6 +3,7 @@ import { requireStudent } from "@/lib/auth";
 import { updatePenNameAction } from "@/lib/actions";
 import { getMyReviews } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
+import { ReviewActions } from "@/app/components/review-actions";
 import { ReviewEntry } from "@/app/components/review-entry";
 import { SiteHeader } from "@/app/components/site-header";
 
@@ -70,7 +71,13 @@ export default async function MePage() {
                 </p>
               </div>
               <ol>
-                <ReviewEntry review={review} now={now} />
+                <ReviewEntry
+                  review={review}
+                  now={now}
+                  actions={
+                    <ReviewActions review={review} isMine now={now} />
+                  }
+                />
               </ol>
             </li>
           ))}

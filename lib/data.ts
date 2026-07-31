@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { getDb } from "./db";
 import { copies, loans, reports, reviews, students, users, works } from "./db/schema";
-import { gradeAt } from "./school";
+import { gradeAt, isEditable } from "./school";
 import type {
   BorrowedBook,
   Copy,
@@ -211,6 +211,46 @@ export async function addReview(input: {
     hidden: false,
   };
   await db.insert(reviews).values(row);
+  return toReview(row);
+}
+
+async function getOwnEditableReviewRow(reviewId: string, studentId: string) {
+  const db = getDb();
+  const [row] = await db.select().from(reviews).where(eq(reviews.id, reviewId)).limit(1);
+  if (!row) throw new Error(`不明な感想: ${reviewId}`);
+  if (row.studentId !== studentId) throw new Error("自分の感想ではありません");
+  if (row.hidden) throw new Error("この感想は司書によって非表示にされています");
+  if (!isEditable(row.postedAt, new Date())) {
+    throw new Error("投稿から1週間を過ぎたので、直せません");
+  }
+  return row;
+}
+
+/** 本人の感想を直す。編集期間を過ぎていたら直せない */
+export async function updateReview(
+  reviewId: string,
+  studentId: string,
+  input: { body: string; quote: { text: string; page: number } | null },
+): Promise<Review> {
+  await getOwnEditableReviewRow(reviewId, studentId);
+  const db = getDb();
+  const [row] = await db
+    .update(reviews)
+    .set({
+      body: input.body,
+      quoteText: input.quote?.text ?? null,
+      quotePage: input.quote?.page ?? null,
+    })
+    .where(eq(reviews.id, reviewId))
+    .returning();
+  return toReview(row);
+}
+
+/** 本人の感想を消す。編集期間を過ぎていたら消せない */
+export async function deleteReview(reviewId: string, studentId: string): Promise<Review> {
+  await getOwnEditableReviewRow(reviewId, studentId);
+  const db = getDb();
+  const [row] = await db.delete(reviews).where(eq(reviews.id, reviewId)).returning();
   return toReview(row);
 }
 
