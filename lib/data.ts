@@ -254,6 +254,47 @@ export async function deleteReview(reviewId: string, studentId: string): Promise
   return toReview(row);
 }
 
+/** 生徒が感想を通報する。自分の感想や、同じ感想への二重通報はできない */
+export async function addReport(input: {
+  reviewId: string;
+  reporterId: string;
+  reason: string;
+}): Promise<void> {
+  const review = await getReview(input.reviewId);
+  if (!review) throw new Error(`不明な感想: ${input.reviewId}`);
+  if (review.studentId === input.reporterId) {
+    throw new Error("自分の感想は通報できません");
+  }
+
+  const db = getDb();
+  const [already] = await db
+    .select({ id: reports.id })
+    .from(reports)
+    .where(
+      and(eq(reports.reviewId, input.reviewId), eq(reports.reporterId, input.reporterId)),
+    )
+    .limit(1);
+  if (already) throw new Error("この感想はもう通報しています");
+
+  await db.insert(reports).values({
+    id: `rep-${randomUUID()}`,
+    reviewId: input.reviewId,
+    reporterId: input.reporterId,
+    reason: input.reason,
+    reportedAt: new Date().toISOString().slice(0, 10),
+  });
+}
+
+/** この生徒が通報済みの感想の id 一覧。二重通報の抑止と「通報しました」表示に使う */
+export async function getReportedReviewIds(studentId: string): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ reviewId: reports.reviewId })
+    .from(reports)
+    .where(eq(reports.reporterId, studentId));
+  return rows.map((r) => r.reviewId);
+}
+
 /* ------------------------------------------------------------------ */
 /* 司書向け                                                            */
 /* ------------------------------------------------------------------ */

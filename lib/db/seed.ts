@@ -190,8 +190,8 @@ async function main() {
 
   console.log("通報を投入しています…");
   await db.insert(reports).values([
-    { id: "rep-1", reviewId: "r-9", reason: "個人が特定できそうな内容が含まれている", reportedAt: "2026-07-20" },
-    { id: "rep-2", reviewId: "r-11", reason: "本の内容と関係ない書き込みに見える", reportedAt: "2026-07-25" },
+    { id: "rep-1", reviewId: "r-9", reporterId: "s-minamo", reason: "個人が特定できそうな内容が含まれている", reportedAt: "2026-07-20" },
+    { id: "rep-2", reviewId: "r-11", reporterId: "s-takenoko", reason: "本の内容と関係ない書き込みに見える", reportedAt: "2026-07-25" },
   ]);
 
   console.log(`完了。ログイン用メール例: shiori@${domain}（生徒） / librarian@${domain}（司書）`);

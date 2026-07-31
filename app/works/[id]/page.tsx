@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireStudent } from "@/lib/auth";
 import {
   getBorrowedBooks,
+  getReportedReviewIds,
   getReviewsForWork,
   getWork,
   hasTaggedCopy,
@@ -30,6 +31,7 @@ export default async function WorkPage({
   const borrowed = (await getBorrowedBooks(student.id)).find(
     (b) => b.work.id === work.id,
   );
+  const reportedIds = new Set(await getReportedReviewIds(student.id));
 
   return (
     <>
@@ -47,7 +49,13 @@ export default async function WorkPage({
                     now={now}
                     isMine={isMine}
                     actions={
-                      <ReviewActions review={review} isMine={isMine} now={now} />
+                      <ReviewActions
+                        review={review}
+                        isMine={isMine}
+                        now={now}
+                        workId={work.id}
+                        reported={reportedIds.has(review.id)}
+                      />
                     }
                   />
                 );

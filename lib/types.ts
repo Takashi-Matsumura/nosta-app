@@ -57,6 +57,8 @@ export type Review = {
 export type Report = {
   id: string;
   reviewId: string;
+  /** 通報した生徒。悪用調査・重複防止のためだけに持つ。司書向け画面には出さない */
+  reporterId: string | null;
   reason: string;
   /** ISO 8601 の日付 */
   reportedAt: string;

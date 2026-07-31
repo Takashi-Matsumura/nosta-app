@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireLibrarian, requireStudent, signOut } from "./auth";
 import {
+  addReport,
   addReview,
   addUser,
   deleteReview,
@@ -96,6 +97,23 @@ export async function deleteReviewAction(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/reports");
   revalidatePath("/admin/tags");
+}
+
+export async function reportReviewAction(formData: FormData) {
+  const student = await requireStudent();
+
+  const reviewId = String(formData.get("reviewId") ?? "");
+  const workId = String(formData.get("workId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!reason) {
+    throw new Error("通報の理由が空です");
+  }
+
+  await addReport({ reviewId, reporterId: student.id, reason });
+
+  revalidatePath(`/works/${workId}`);
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
 }
 
 /* ------------------------------------------------------------------ */
