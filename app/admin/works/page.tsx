@@ -1,6 +1,7 @@
 import { addWorkAction } from "@/lib/actions";
 import { requireLibrarian } from "@/lib/auth";
 import { getAllWorks } from "@/lib/data";
+import { fetchNdlInfo } from "@/lib/ndl";
 import { fetchBook, normalizeIsbn } from "@/lib/openbd";
 import { AdminHeader } from "@/app/components/admin-header";
 
@@ -89,6 +90,11 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
     );
   }
 
+  // openBD に無い刊行年・NDC分類は国立国会図書館サーチで補う（無くても登録は妨げない）
+  const ndl = await fetchNdlInfo(book.isbn);
+  const publishedYear = book.publishedYear ?? ndl.publishedYear;
+  const suggestedCallNumber = ndl.ndc ?? "";
+
   return (
     <div className="mt-6 rounded-sm border border-rule bg-paper px-5 py-5">
       <p className="text-[0.65rem] tracking-[0.4em] text-ink-faint">
@@ -115,7 +121,7 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
               name="publishedYear"
               type="number"
               required
-              defaultValue={book.publishedYear ?? undefined}
+              defaultValue={publishedYear ?? undefined}
               placeholder="1989"
               className="mt-1.5 w-full rounded-sm border border-rule bg-paper px-4 py-2.5 font-mono text-sm outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-ink-soft"
             />
@@ -132,6 +138,7 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
               name="callNumber"
               type="text"
               required
+              defaultValue={suggestedCallNumber}
               placeholder="913.6/ミ"
               className="mt-1.5 w-full rounded-sm border border-rule bg-paper px-4 py-2.5 font-mono text-sm outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-ink-soft"
             />
@@ -154,11 +161,17 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
           </div>
         </div>
         <p className="text-xs leading-relaxed text-ink-faint">
-          {book.publishedYear === null && (
-            <>openBD に刊行年のデータが無かったため、確認して入れてください。</>
+          {publishedYear === null && (
+            <>刊行年のデータが見つからなかったため、確認して入れてください。</>
+          )}{" "}
+          {ndl.ndc ? (
+            <>
+              請求記号は国立国会図書館サーチの分類（{ndl.ndc}）をもとにした候補です。
+              著者記号（末尾のカタカナ）を確認して付け足してください。
+            </>
+          ) : (
+            <>請求記号とバーコードは自動では取得できないので、手で入れてください。</>
           )}
-          {book.publishedYear === null && " "}
-          請求記号とバーコードは openBD には無いので、手で入れてください。
         </p>
         <button
           type="submit"
