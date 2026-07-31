@@ -22,7 +22,7 @@ import {
   updatePenName,
   updateReview,
 } from "./data";
-import { fetchBook } from "./openbd";
+import { fetchBook, normalizeIsbn } from "./openbd";
 
 export async function postReview(formData: FormData) {
   const student = await requireStudent();
@@ -246,9 +246,10 @@ export async function returnLoanAction(formData: FormData) {
 export async function addWorkAction(formData: FormData) {
   await requireLibrarian();
 
-  const isbn = String(formData.get("isbn") ?? "").replace(/[-\s]/g, "").trim();
+  const isbn = normalizeIsbn(String(formData.get("isbn") ?? ""));
   const callNumber = String(formData.get("callNumber") ?? "").trim();
   const barcode = String(formData.get("barcode") ?? "").trim();
+  const publishedYear = Number(formData.get("publishedYear"));
 
   if (!/^(\d{9}[\dX]|\d{13})$/.test(isbn)) {
     throw new Error("ISBN が不正です");
@@ -259,12 +260,16 @@ export async function addWorkAction(formData: FormData) {
   if (!barcode) {
     throw new Error("バーコードが空です");
   }
+  if (!Number.isFinite(publishedYear) || publishedYear <= 0) {
+    throw new Error("刊行年が不正です");
+  }
 
   const book = await fetchBook(isbn);
   if (!book) {
     throw new Error(`openBD に ISBN ${isbn} の本が見つかりませんでした`);
   }
 
-  await addWork({ ...book, callNumber, barcode });
+  // 刊行年は確認画面で司書が確認・修正した値を優先する（openBD 側が空のことがあるため）
+  await addWork({ ...book, publishedYear, callNumber, barcode });
   revalidatePath("/admin/works");
 }

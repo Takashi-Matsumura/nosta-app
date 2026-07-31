@@ -135,6 +135,12 @@ openBD は未知の ISBN でも 200 で `[null]` を返すため、`res.ok` だ�
 画面が固まらないようにしている。請求記号・バーコードは openBD には無いので、
 確認カードを見ながら司書が手で入力する。
 
+ISBN は `normalizeIsbn`（`lib/openbd.ts`）で正規化してから照会する。本の裏表紙には
+「ISBN978-4-12-150861-4 C1236」のように "ISBN" の文字やCコード・価格が一緒に印刷されて
+いることが多く、そのまま渡すと openBD が本を見つけられない。また刊行年（`pubdate`）が
+空のまま登録されている本もあるため、`OpenBdBook.publishedYear` は `null` になりうる型にし、
+その場合は確認カードで司書が刊行年を確認・入力してから登録する。
+
 ### ログインは proxy.ts で全ページに強制している
 
 `proxy.ts`（Next.js 16 で middleware から改称）で、`/login` と NextAuth の内部エンドポイント以外の

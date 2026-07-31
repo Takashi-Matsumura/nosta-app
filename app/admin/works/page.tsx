@@ -1,7 +1,7 @@
 import { addWorkAction } from "@/lib/actions";
 import { requireLibrarian } from "@/lib/auth";
 import { getAllWorks } from "@/lib/data";
-import { fetchBook } from "@/lib/openbd";
+import { fetchBook, normalizeIsbn } from "@/lib/openbd";
 import { AdminHeader } from "@/app/components/admin-header";
 
 export default async function AdminWorksPage({
@@ -72,7 +72,7 @@ export default async function AdminWorksPage({
 async function IsbnLookupResult({ isbn }: { isbn: string }) {
   let book;
   try {
-    book = await fetchBook(isbn.replace(/[-\s]/g, ""));
+    book = await fetchBook(normalizeIsbn(isbn));
   } catch (e) {
     return (
       <p className="mt-6 text-sm leading-relaxed text-stamp">
@@ -97,12 +97,29 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
       <h3 className="mt-2 text-lg leading-snug">{book.title}</h3>
       <p className="mt-1 text-sm text-ink-soft">{book.author}</p>
       <p className="mt-2 font-mono text-[0.7rem] text-ink-faint">
-        {book.publisher} {book.publishedYear}　ISBN {book.isbn}
+        {book.publisher}　ISBN {book.isbn}
       </p>
 
       <form action={addWorkAction} className="mt-5 space-y-3">
         <input type="hidden" name="isbn" value={book.isbn} />
         <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="w-full sm:w-28">
+            <label
+              htmlFor="publishedYear"
+              className="text-xs tracking-widest text-ink-soft"
+            >
+              刊行年
+            </label>
+            <input
+              id="publishedYear"
+              name="publishedYear"
+              type="number"
+              required
+              defaultValue={book.publishedYear ?? undefined}
+              placeholder="1989"
+              className="mt-1.5 w-full rounded-sm border border-rule bg-paper px-4 py-2.5 font-mono text-sm outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-ink-soft"
+            />
+          </div>
           <div className="flex-1">
             <label
               htmlFor="callNumber"
@@ -137,6 +154,10 @@ async function IsbnLookupResult({ isbn }: { isbn: string }) {
           </div>
         </div>
         <p className="text-xs leading-relaxed text-ink-faint">
+          {book.publishedYear === null && (
+            <>openBD に刊行年のデータが無かったため、確認して入れてください。</>
+          )}
+          {book.publishedYear === null && " "}
           請求記号とバーコードは openBD には無いので、手で入れてください。
         </p>
         <button
