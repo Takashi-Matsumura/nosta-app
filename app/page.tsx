@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { getBorrowedBooks, getCurrentStudent } from "@/lib/mock-data";
+import { requireStudent } from "@/lib/auth";
+import { getBorrowedBooks } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
 import { BookSlip } from "./components/book-slip";
 import { SiteHeader } from "./components/site-header";
 
-export default function HomePage() {
-  const student = getCurrentStudent();
+export default async function HomePage() {
+  const student = await requireStudent();
   const now = new Date();
   const grade = gradeLabel(gradeAt(student.entranceYear, now));
-  const books = getBorrowedBooks(student.id);
+  const books = await getBorrowedBooks(student.id);
   const unwritten = books.filter((b) => !b.hasWritten).length;
 
   return (

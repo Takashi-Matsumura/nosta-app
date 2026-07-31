@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { getCurrentStudent, getMyReviews } from "@/lib/mock-data";
+import { requireStudent } from "@/lib/auth";
+import { getMyReviews } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
 import { ReviewEntry } from "@/app/components/review-entry";
 import { SiteHeader } from "@/app/components/site-header";
 
-export default function MePage() {
-  const student = getCurrentStudent();
+export default async function MePage() {
+  const student = await requireStudent();
   const now = new Date();
   const grade = gradeLabel(gradeAt(student.entranceYear, now));
-  const mine = getMyReviews(student.id);
+  const mine = await getMyReviews(student.id);
 
   return (
     <>

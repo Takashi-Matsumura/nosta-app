@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireStudent } from "@/lib/auth";
 import {
   getBorrowedBooks,
-  getCurrentStudent,
   getReviewsForWork,
   getWork,
   hasTaggedCopy,
   hasWritten,
-} from "@/lib/mock-data";
+} from "@/lib/data";
 import { LibraryCard } from "@/app/components/library-card";
 import { ReviewEntry } from "@/app/components/review-entry";
 import { SealedNotice } from "@/app/components/sealed-notice";
@@ -19,14 +19,14 @@ export default async function WorkPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const work = getWork(id);
+  const work = await getWork(id);
   if (!work) notFound();
 
-  const student = getCurrentStudent();
+  const student = await requireStudent();
   const now = new Date();
-  const reviews = getReviewsForWork(work.id);
-  const opened = hasWritten(student.id, work.id);
-  const borrowed = getBorrowedBooks(student.id).find(
+  const reviews = await getReviewsForWork(work.id);
+  const opened = await hasWritten(student.id, work.id);
+  const borrowed = (await getBorrowedBooks(student.id)).find(
     (b) => b.work.id === work.id,
   );
 
@@ -34,7 +34,7 @@ export default async function WorkPage({
     <>
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl grow px-5 py-10">
-        <LibraryCard work={work} tagged={hasTaggedCopy(work.id)}>
+        <LibraryCard work={work} tagged={await hasTaggedCopy(work.id)}>
           {opened ? (
             <ol className="divide-y divide-rule-soft">
               {reviews.map((review) => (

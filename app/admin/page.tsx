@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { countReports, countUntaggedCopies } from "@/lib/mock-data";
+import { requireLibrarian } from "@/lib/auth";
+import { countReports, countUntaggedCopies } from "@/lib/data";
 import { AdminHeader } from "@/app/components/admin-header";
 
-export default function AdminDashboardPage() {
-  const reportCount = countReports();
-  const untaggedCount = countUntaggedCopies();
+export default async function AdminDashboardPage() {
+  await requireLibrarian();
+  const reportCount = await countReports();
+  const untaggedCount = await countUntaggedCopies();
 
   return (
     <>

@@ -30,14 +30,17 @@
 
 ## 実装の状態
 
-第1フェーズ「画面・世界観の試作」。**データはすべてモックで、DB も認証もまだない。**
-図書カード（本の巻末に挟まっていた貸出カード）をモチーフにしている。
+第2フェーズ「DB・認証の基盤整備」。図書カード（本の巻末に挟まっていた貸出カード）をモチーフにしている。
+
+- データは PostgreSQL（ローカルは Docker、Drizzle ORM）に移行済み。`lib/mock-data.ts` は廃止した
+- 認証は NextAuth.js（Auth.js v5）＋ Google。学校の Google Workspace ドメインでメールアドレスを制限する
+- 生徒は role: student、司書は role: librarian としてユーザーを区別する。ログインの実体は「メールアドレスが users テーブルに事前登録されているか」で、サインアップ画面は無い（司書が事前に生徒を登録する運用を想定。詳細は未決定）
 
 ### 画面
 
 | URL | 画面 |
 | --- | --- |
-| `/login` | ログイン（Google 想定。試作では素通り） |
+| `/login` | ログイン。学校の Google アカウントでサインインする |
 | `/` | ホーム。いま借りている本＝書ける本 |
 | `/search` | さがす |
 | `/works/[id]` | 作品ページ。未投稿ならカードは伏せたまま |
@@ -45,7 +48,7 @@
 | `/works/[id]/opened` | 開錠。投稿直後に先輩のカードが開く |
 | `/me` | じぶんの記録 |
 | `/c/[token]` | NTAG をかざしたときの入口。作品ページへ転送 |
-| `/admin` | 司書用ダッシュボード。Basic 認証が必要（後述） |
+| `/admin` | 司書用ダッシュボード。role: librarian のアカウントのみ |
 | `/admin/reports` | 通報の確認。非表示にする／却下する |
 | `/admin/tags` | タグ登録待ちの蔵書一覧 |
 
@@ -76,45 +79,73 @@
 表示は「高2のとき」。書いた人が今どうなったかではなく、書いた時点の姿を残す。
 学年度は4月始まりで計算するので、1〜3月の投稿も前年度として扱われる（`lib/school.ts`）。
 
-### /admin は暫定で Basic 認証をかけている
+### ログインは proxy.ts で全ページに強制している
 
-本来の認証（学校の Google アカウント・ドメイン制限）が入るまでの間、`/admin` 配下だけ
-`proxy.ts` で Basic 認証をかけている。通報された感想には個人が特定できる内容が含まれうるため、
-誰でも読める状態のまま置いておけない。`ADMIN_BASIC_AUTH_PASSWORD` が未設定の環境では、
-安全側に倒して `/admin` 配下を全て 503 で拒否する。
+`proxy.ts`（Next.js 16 で middleware から改称）で、`/login` と NextAuth の内部エンドポイント以外の
+すべてのページをログイン必須にしている。`/admin` 配下はさらに role: librarian でないと `/` に戻す。
+「読む＝ログイン不要」にするかどうかは、据置端末の運用が決まってから対応する（未決定のまま）。
+
+### ログインできるのは users テーブルに登録済みのメールだけ
+
+Google でサインインできても、`ALLOWED_EMAIL_DOMAIN` の外や、`users` テーブルに事前登録が無い
+メールアドレスは `signIn` コールバックで弾かれる（`lib/auth.ts`）。誰でもアカウントを自動作成できると
+生徒以外が入り込めてしまうため。生徒・司書をどう事前登録するかはまだ決めていない。
 
 ## 動かし方
 
 ```bash
 npm install
-cp .env.local.example .env.local  # ADMIN_BASIC_AUTH_PASSWORD を設定する
+docker compose up -d          # ローカル PostgreSQL（localhost:5434）
+cp .env.local.example .env.local
+npm run db:push               # スキーマを反映
+npm run db:seed               # 試作用データを投入
 npm run dev
 ```
 
-http://localhost:3000 を開く。投稿はメモリ上に積まれるだけなので、サーバを再起動すると初期状態に戻る。
-`/admin` 配下を開くには `.env.local` の `ADMIN_BASIC_AUTH_PASSWORD` が必要（未設定なら 503）。
+`.env.local` には以下が必要（`.env.local.example` に説明あり）。
+
+| 変数 | 用途 |
+| --- | --- |
+| `DATABASE_URL` | ローカル Postgres への接続文字列。デフォルトのままで動く |
+| `ALLOWED_EMAIL_DOMAIN` | ログインを許可するメールドメイン |
+| `AUTH_SECRET` | セッション署名用。`openssl rand -base64 32` で生成 |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google Cloud Console で発行する OAuth クライアント。リダイレクト URI に `http://localhost:3000/api/auth/callback/google` を登録する。**未設定のあいだは Google ログインが動かない** |
+
+http://localhost:3000 を開く。`npm run db:seed` は生徒7人＋司書1人を
+`<slug>@<ALLOWED_EMAIL_DOMAIN>` というメールアドレスで投入する（例: `shiori@nosta-school.example`）。
+Google OAuth を設定したら、このドメインの Google アカウントでログインする。
+
+DB の中身を GUI で見たい場合は `npm run db:studio`。
 
 ## 構成
 
 ```
 app/
-  components/     図書カード、感想1件、伏せ札などの共通部品
-  works/[id]/     作品ページ・記入・開錠
-  c/[token]/      NTAG の受け口
+  components/         図書カード、感想1件、伏せ札などの共通部品
+  works/[id]/         作品ページ・記入・開錠
+  c/[token]/          NTAG の受け口
+  admin/              司書用ダッシュボード・通報・タグ登録
+  api/auth/[...nextauth]/  NextAuth のエンドポイント
 lib/
-  types.ts        作品 / 蔵書1冊 / 生徒 / 感想 / 貸出
-  mock-data.ts    試作用データとメモリストア
+  types.ts        作品 / 蔵書1冊 / 生徒 / 感想 / 貸出 の型
+  data.ts         DB クエリ（旧 mock-data.ts の置き換え）
+  auth.ts         NextAuth 設定・requireStudent/requireLibrarian
   school.ts       学年度・学年ラベル・日付印
-  actions.ts      感想の投稿（Server Action）
+  actions.ts      感想の投稿・司書操作・サインアウト（Server Action）
+  db/
+    schema.ts     Drizzle スキーマ
+    seed.ts       試作用データの投入スクリプト
+proxy.ts          全ページのログイン必須化・/admin のロールチェック
 ```
 
-Next.js 16（App Router）/ React 19 / Tailwind CSS v4 / TypeScript。
+Next.js 16（App Router）/ React 19 / Tailwind CSS v4 / TypeScript / PostgreSQL（Drizzle ORM）/ NextAuth.js（Auth.js v5）。
 
 ## これから決めること
 
+- **生徒・司書アカウントの登録方法。** いまは seed スクリプトで users テーブルに直接投入しているだけ。
+  司書が生徒名簿から一括登録する画面か、CSV 取り込みか
 - **貸出記録をどう取るか。** 「貸し出した本だけ書ける」を成立させるには図書館システムとの連携が要る。
   CSV 取り込みか、API か、貸出時に NTAG をかざす運用にするか
-- 司書の管理画面（非表示操作・通報の確認・タグ登録）
 - 据置端末の扱い（読む＝ログイン不要／書く＝ログイン必要＋自動サインアウト）
 - 書誌データの取得（openBD を主軸に、無い本は国立国会図書館サーチで補完）
-- 実際の導入先校とホスティング
+- 実際の導入先校とホスティング（本番用 DB・Google OAuth クライアントの用意）

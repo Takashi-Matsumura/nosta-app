@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  countReviews,
-  getBorrowedBooks,
-  getCurrentStudent,
-  getWork,
-} from "@/lib/mock-data";
+import { requireStudent } from "@/lib/auth";
+import { countReviews, getBorrowedBooks, getWork } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
 import { SiteHeader } from "@/app/components/site-header";
 import { WriteForm } from "./write-form";
@@ -16,11 +12,11 @@ export default async function WritePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const work = getWork(id);
+  const work = await getWork(id);
   if (!work) notFound();
 
-  const student = getCurrentStudent();
-  const borrowed = getBorrowedBooks(student.id).find(
+  const student = await requireStudent();
+  const borrowed = (await getBorrowedBooks(student.id)).find(
     (b) => b.work.id === work.id,
   );
 
@@ -45,7 +41,7 @@ export default async function WritePage({
   }
 
   const grade = gradeLabel(gradeAt(student.entranceYear, new Date()));
-  const waiting = countReviews(work.id);
+  const waiting = await countReviews(work.id);
 
   return (
     <>

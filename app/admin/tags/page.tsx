@@ -1,9 +1,11 @@
 import { registerTagAction } from "@/lib/actions";
-import { getUntaggedCopies } from "@/lib/mock-data";
+import { requireLibrarian } from "@/lib/auth";
+import { getUntaggedCopies } from "@/lib/data";
 import { AdminHeader } from "@/app/components/admin-header";
 
-export default function AdminTagsPage() {
-  const untagged = getUntaggedCopies();
+export default async function AdminTagsPage() {
+  await requireLibrarian();
+  const untagged = await getUntaggedCopies();
 
   return (
     <>

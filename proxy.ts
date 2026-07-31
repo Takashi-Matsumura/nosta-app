@@ -1,51 +1,36 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
 
-const REALM = "nosta admin";
-const ADMIN_USER = process.env.ADMIN_BASIC_AUTH_USER ?? "librarian";
+/** ログインしていなくても開けるパス */
+const PUBLIC_PATHS = ["/login"];
 
-function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
-}
-
-function unauthorized() {
-  return new NextResponse("認証が必要です", {
-    status: 401,
-    headers: { "WWW-Authenticate": `Basic realm="${REALM}"` },
-  });
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/api/auth");
 }
 
 /**
- * /admin 配下は司書専用。本格的な認証（学校の Google アカウント）が入るまでの
- * 暫定措置として、Basic 認証で誰でも見える状態を防ぐ。
- * ADMIN_BASIC_AUTH_PASSWORD が未設定の環境では、安全側に倒して全て拒否する。
+ * 全ページ、ログイン必須。/admin 配下はさらに司書ロールが必須。
+ * 「読む＝ログイン不要」の運用は据置端末の扱いが決まってから対応する。
  */
-export function proxy(request: NextRequest) {
-  const password = process.env.ADMIN_BASIC_AUTH_PASSWORD;
-  if (!password) {
-    return new NextResponse(
-      "司書用管理画面は ADMIN_BASIC_AUTH_PASSWORD が未設定のため利用できません。",
-      { status: 503 },
-    );
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (isPublic(pathname)) {
+    return NextResponse.next();
   }
 
-  const auth = request.headers.get("authorization");
-  if (auth?.startsWith("Basic ")) {
-    const decoded = Buffer.from(auth.slice(6), "base64").toString("utf-8");
-    const separatorIndex = decoded.indexOf(":");
-    const user = decoded.slice(0, separatorIndex);
-    const pass = decoded.slice(separatorIndex + 1);
-    if (safeEqual(user, ADMIN_USER) && safeEqual(pass, password)) {
-      return NextResponse.next();
-    }
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return unauthorized();
+  if (pathname.startsWith("/admin") && session.user.role !== "librarian") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

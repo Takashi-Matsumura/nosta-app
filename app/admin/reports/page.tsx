@@ -1,10 +1,12 @@
 import { dismissReportAction, hideReportedReviewAction } from "@/lib/actions";
-import { getReports, getWork } from "@/lib/mock-data";
+import { requireLibrarian } from "@/lib/auth";
+import { getReports, getWork } from "@/lib/data";
 import { authorLabel, gradeLabel, stampDate } from "@/lib/school";
 import { AdminHeader } from "@/app/components/admin-header";
 
-export default function AdminReportsPage() {
-  const reports = getReports();
+export default async function AdminReportsPage() {
+  await requireLibrarian();
+  const reports = await getReports();
 
   return (
     <>
@@ -21,8 +23,8 @@ export default function AdminReportsPage() {
           </p>
         ) : (
           <ul className="mt-8 space-y-5">
-            {reports.map((report) => {
-              const work = getWork(report.review.workId);
+            {await Promise.all(reports.map(async (report) => {
+              const work = await getWork(report.review.workId);
               return (
                 <li
                   key={report.id}
@@ -82,7 +84,7 @@ export default function AdminReportsPage() {
                   </div>
                 </li>
               );
-            })}
+            }))}
           </ul>
         )}
       </main>

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getCopyByToken } from "@/lib/mock-data";
+import { getCopyByToken } from "@/lib/data";
 
 /**
  * NTAG に書き込む URL の受け口。タグには UID ではなくこのトークンを載せる
@@ -11,7 +11,7 @@ export default async function TagPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const copy = getCopyByToken(token);
+  const copy = await getCopyByToken(token);
   if (!copy) notFound();
 
   redirect(`/works/${copy.workId}`);
