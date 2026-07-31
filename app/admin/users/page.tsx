@@ -1,10 +1,10 @@
-import { addUserAction } from "@/lib/actions";
+import { addUserAction, setUserActiveAction } from "@/lib/actions";
 import { requireLibrarian } from "@/lib/auth";
 import { getAllUsers } from "@/lib/data";
 import { AdminHeader } from "@/app/components/admin-header";
 
 export default async function AdminUsersPage() {
-  await requireLibrarian();
+  const me = await requireLibrarian();
   const accounts = await getAllUsers();
 
   return (
@@ -14,6 +14,7 @@ export default async function AdminUsersPage() {
         <h1 className="text-xl tracking-wide">ユーザー</h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
           ログインできるメールアドレスをここで登録します。登録の無いメールアドレスはログインできません。
+          卒業したアカウントは停止します。書いたカードは残ります。
         </p>
 
         <div className="mt-8 rounded-sm border border-rule bg-paper px-5 py-5">
@@ -90,7 +91,9 @@ export default async function AdminUsersPage() {
           {accounts.map((account) => (
             <li
               key={account.id}
-              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-5 py-3.5"
+              className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-5 py-3.5 ${
+                account.active ? "" : "text-ink-faint"
+              }`}
             >
               <div>
                 <p className="text-sm">{account.email}</p>
@@ -100,15 +103,42 @@ export default async function AdminUsersPage() {
                   </p>
                 )}
               </div>
-              <span
-                className={`rounded-sm border px-1.5 py-px text-[0.7rem] ${
-                  account.role === "librarian"
-                    ? "border-navy text-navy"
-                    : "border-rule text-ink-soft"
-                }`}
-              >
-                {account.role === "librarian" ? "司書" : "生徒"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`rounded-sm border px-1.5 py-px text-[0.7rem] ${
+                    account.role === "librarian"
+                      ? "border-navy text-navy"
+                      : "border-rule text-ink-soft"
+                  }`}
+                >
+                  {account.role === "librarian" ? "司書" : "生徒"}
+                </span>
+                {!account.active && (
+                  <span className="rounded-sm border border-stamp px-1.5 py-px text-[0.7rem] text-stamp">
+                    停止中
+                  </span>
+                )}
+                {account.id !== me.id && (
+                  <form action={setUserActiveAction}>
+                    <input type="hidden" name="userId" value={account.id} />
+                    <input
+                      type="hidden"
+                      name="active"
+                      value={account.active ? "false" : "true"}
+                    />
+                    <button
+                      type="submit"
+                      className={
+                        account.active
+                          ? "rounded-sm border border-stamp bg-stamp px-3 py-1 text-[0.7rem] text-paper transition-opacity hover:opacity-90"
+                          : "rounded-sm border border-rule bg-paper px-3 py-1 text-[0.7rem] text-ink-soft transition-colors hover:bg-paper-aged"
+                      }
+                    >
+                      {account.active ? "停止する" : "再開する"}
+                    </button>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
         </ul>

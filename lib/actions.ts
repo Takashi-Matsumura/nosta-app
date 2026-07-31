@@ -12,6 +12,7 @@ import {
   getBorrowedBooks,
   hideReportedReview,
   registerTag,
+  setUserActive,
   updatePenName,
   updateReview,
 } from "./data";
@@ -174,5 +175,19 @@ export async function addUserAction(formData: FormData) {
     await addUser({ email, role });
   }
 
+  revalidatePath("/admin/users");
+}
+
+export async function setUserActiveAction(formData: FormData) {
+  const me = await requireLibrarian();
+
+  const userId = String(formData.get("userId") ?? "");
+  const active = String(formData.get("active") ?? "") === "true";
+
+  if (!active && userId === me.id) {
+    throw new Error("自分のアカウントは停止できません");
+  }
+
+  await setUserActive(userId, active);
   revalidatePath("/admin/users");
 }

@@ -108,4 +108,6 @@ export type UserAccount = {
   role: Role;
   penName: string | null;
   entranceYear: number | null;
+  /** 卒業などで false になったアカウントはログインできない。感想・貸出はそのまま残る */
+  active: boolean;
 };

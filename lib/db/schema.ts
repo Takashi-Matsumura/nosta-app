@@ -14,6 +14,8 @@ export const users = pgTable("users", {
   role: text("role", { enum: ["student", "librarian"] })
     .notNull()
     .default("student"),
+  /** 卒業などで false にすると、ログインできなくなる。感想・貸出はそのまま残る */
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

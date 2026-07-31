@@ -36,9 +36,10 @@ function toReview(row: typeof reviews.$inferSelect): Review {
 /* ------------------------------------------------------------------ */
 
 /** ログインしてきたメールアドレスに対応する users 行。未登録なら undefined */
-export async function getUserByEmail(
-  email: string,
-): Promise<{ id: string; email: string; role: "student" | "librarian" } | undefined> {
+export async function getUserByEmail(email: string): Promise<
+  | { id: string; email: string; role: "student" | "librarian"; active: boolean }
+  | undefined
+> {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   return user;
@@ -384,10 +385,22 @@ export async function getAllUsers(): Promise<UserAccount[]> {
       role: users.role,
       penName: students.penName,
       entranceYear: students.entranceYear,
+      active: users.active,
     })
     .from(users)
     .leftJoin(students, eq(students.id, users.id))
     .orderBy(users.email);
+}
+
+/** 卒業などでログインを止める／再開する。感想・貸出はそのまま残す */
+export async function setUserActive(userId: string, active: boolean): Promise<void> {
+  const db = getDb();
+  const result = await db
+    .update(users)
+    .set({ active })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  if (result.length === 0) throw new Error(`不明なアカウント: ${userId}`);
 }
 
 /**

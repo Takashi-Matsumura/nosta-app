@@ -9,7 +9,8 @@ const domain = process.env.ALLOWED_EMAIL_DOMAIN ?? "nosta-school.example";
 
 const studentSeeds = [
   { slug: "shiori", penName: "しおり", entranceYear: 2024 },
-  { slug: "kamome", penName: "かもめ", entranceYear: 2015 },
+  // 2015年入学＝卒業済み。アカウント停止でも感想が残ることの実演
+  { slug: "kamome", penName: "かもめ", entranceYear: 2015, active: false },
   { slug: "fuyunoinu", penName: "冬の犬", entranceYear: 2016 },
   { slug: "nanakumi", penName: "七組の雨", entranceYear: 2018 },
   { slug: "takenoko", penName: "たけのこ", entranceYear: 2019 },
@@ -36,6 +37,7 @@ async function main() {
       id: `s-${s.slug}`,
       email: `${s.slug}@${domain}`,
       role: "student" as const,
+      active: s.active ?? true,
     })),
     { id: "u-librarian", email: `librarian@${domain}`, role: "librarian" as const },
   ]);
