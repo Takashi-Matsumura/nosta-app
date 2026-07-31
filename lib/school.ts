@@ -38,7 +38,7 @@ export function yearsAgo(iso: string, now: Date): number {
 export const EDITABLE_DAYS = 7;
 
 /** 日付文字列（YYYY-MM-DD）から now までの暦日の差。タイムゾーンで1日ずれないよう UTC で揃える */
-function daysSince(isoDate: string, now: Date): number {
+export function daysSince(isoDate: string, now: Date): number {
   const [y, m, d] = isoDate.split("-").map(Number);
   const posted = Date.UTC(y, m - 1, d);
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
@@ -53,4 +53,12 @@ export function isEditable(postedAt: string, now: Date): boolean {
 /** 直せる期限まであと何日か。「あとN日は直せます」の表示用 */
 export function editableDaysLeft(postedAt: string, now: Date): number {
   return Math.max(0, EDITABLE_DAYS - daysSince(postedAt, now));
+}
+
+/** 返却後も書ける猶予日数。EDITABLE_DAYS とは独立の定数 */
+export const WRITE_GRACE_DAYS = 7;
+
+/** 返却後、書ける期限まであと何日か。「あとN日は書けます」の表示用 */
+export function writeGraceDaysLeft(returnedAt: string, now: Date): number {
+  return Math.max(0, WRITE_GRACE_DAYS - daysSince(returnedAt, now));
 }

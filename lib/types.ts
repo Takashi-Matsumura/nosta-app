@@ -111,3 +111,11 @@ export type UserAccount = {
   /** 卒業などで false になったアカウントはログインできない。感想・貸出はそのまま残る */
   active: boolean;
 };
+
+/** 貸出中の1冊と、借りている生徒。司書の貸出画面で使う */
+export type ActiveLoan = {
+  loan: Loan;
+  copy: Copy;
+  work: Work;
+  student: Student;
+};

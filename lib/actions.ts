@@ -4,14 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireLibrarian, requireStudent, signOut } from "./auth";
 import {
+  addLoan,
   addReport,
   addReview,
   addUser,
   deleteReview,
   dismissReport,
-  getBorrowedBooks,
+  getCopy,
+  getCopyByBarcode,
+  getCopyByToken,
+  getWritableLoan,
   hideReportedReview,
   registerTag,
+  returnLoan,
   setUserActive,
   updatePenName,
   updateReview,
@@ -26,11 +31,9 @@ export async function postReview(formData: FormData) {
   const quoteText = String(formData.get("quoteText") ?? "").trim();
   const quotePage = Number(formData.get("quotePage"));
 
-  // 感想を書けるのは、いま借りている本だけ
-  const borrowed = (await getBorrowedBooks(student.id)).find(
-    (b) => b.copy.id === copyId && b.work.id === workId,
-  );
-  if (!borrowed) {
+  // 感想を書けるのは、借りているか、返却から猶予期間内の本だけ
+  const writable = await getWritableLoan(student.id, workId);
+  if (!writable || writable.copy.id !== copyId) {
     throw new Error("この本は借りていません");
   }
   if (!body) {
@@ -190,4 +193,49 @@ export async function setUserActiveAction(formData: FormData) {
 
   await setUserActive(userId, active);
   revalidatePath("/admin/users");
+}
+
+/**
+ * 貸し出す。1冊の特定は copyId（手動選択）か copyKey（NTAG タップ／バーコード）の
+ * どちらか。copyKey は USB NFC リーダーがタグの URL 全体を打ち込むことがあるので、
+ * 末尾のトークンだけ取り出してタグ→バーコードの順に照合する。
+ */
+export async function lendAction(formData: FormData) {
+  await requireLibrarian();
+
+  const studentId = String(formData.get("studentId") ?? "");
+  if (!studentId) {
+    throw new Error("生徒が選ばれていません");
+  }
+
+  const copyId = String(formData.get("copyId") ?? "").trim();
+  const copy = copyId ? await getCopy(copyId) : await resolveCopyByKey(formData);
+  if (!copy) {
+    throw new Error("不明な蔵書です");
+  }
+
+  await addLoan(copy.id, studentId);
+  revalidatePath("/admin/loans");
+  revalidatePath("/");
+}
+
+async function resolveCopyByKey(formData: FormData) {
+  const raw = String(formData.get("copyKey") ?? "").trim();
+  if (!raw) {
+    throw new Error("NTAG かバーコードを入力してください");
+  }
+  const key = raw.split("/").pop() ?? "";
+  const copy = (await getCopyByToken(key)) ?? (await getCopyByBarcode(key));
+  if (!copy) {
+    throw new Error(`タグにもバーコードにも一致しません: ${raw}`);
+  }
+  return copy;
+}
+
+export async function returnLoanAction(formData: FormData) {
+  await requireLibrarian();
+  const loanId = String(formData.get("loanId") ?? "");
+  await returnLoan(loanId);
+  revalidatePath("/admin/loans");
+  revalidatePath("/");
 }

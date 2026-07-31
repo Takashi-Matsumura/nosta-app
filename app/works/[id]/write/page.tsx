@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStudent } from "@/lib/auth";
-import { countReviews, getBorrowedBooks, getWork } from "@/lib/data";
+import { countReviews, getWork, getWritableLoan } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
 import { SiteHeader } from "@/app/components/site-header";
 import { WriteForm } from "./write-form";
@@ -16,12 +16,10 @@ export default async function WritePage({
   if (!work) notFound();
 
   const student = await requireStudent();
-  const borrowed = (await getBorrowedBooks(student.id)).find(
-    (b) => b.work.id === work.id,
-  );
+  const writable = await getWritableLoan(student.id, work.id);
 
-  // 借りていない本には書けない
-  if (!borrowed) {
+  // 借りたことが無いか、返却から時間が経った本には書けない
+  if (!writable) {
     return (
       <>
         <SiteHeader />
@@ -56,7 +54,7 @@ export default async function WritePage({
 
         <WriteForm
           workId={work.id}
-          copyId={borrowed.copy.id}
+          copyId={writable.copy.id}
           waiting={waiting}
         />
       </main>

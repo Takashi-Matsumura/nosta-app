@@ -2,10 +2,12 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { getDb } from "./db";
 import { copies, loans, reports, reviews, students, users, works } from "./db/schema";
-import { gradeAt, isEditable } from "./school";
+import { daysSince, gradeAt, isEditable, WRITE_GRACE_DAYS } from "./school";
 import type {
+  ActiveLoan,
   BorrowedBook,
   Copy,
+  Loan,
   ReportWithReview,
   Review,
   ReviewWithAuthor,
@@ -95,7 +97,20 @@ export async function hasTaggedCopy(workId: string): Promise<boolean> {
   return Boolean(row);
 }
 
-/** いま借りている本。感想を書けるのはこれだけ */
+/** 蔵書のバーコードから1冊を引く。NTAG が無い本の貸出処理に使う */
+export async function getCopyByBarcode(barcode: string): Promise<Copy | undefined> {
+  const db = getDb();
+  const [copy] = await db.select().from(copies).where(eq(copies.barcode, barcode)).limit(1);
+  return copy;
+}
+
+/** その作品の蔵書ぜんぶ。貸出時にどの1冊を貸すか選ぶときに使う */
+export async function getCopiesForWork(workId: string): Promise<Copy[]> {
+  const db = getDb();
+  return db.select().from(copies).where(eq(copies.workId, workId));
+}
+
+/** いま手元にある本（現役の貸出のみ）。ホームの「いま借りている本」表示に使う */
 export async function getBorrowedBooks(studentId: string): Promise<BorrowedBook[]> {
   const db = getDb();
   const activeLoans = await db
@@ -122,6 +137,59 @@ export async function hasWritten(studentId: string, workId: string): Promise<boo
     .where(and(eq(reviews.studentId, studentId), eq(reviews.workId, workId)))
     .limit(1);
   return Boolean(row);
+}
+
+/**
+ * その作品を書ける権利のある貸出。借りている最中か、返却してから
+ * WRITE_GRACE_DAYS 以内なら返す（現役の貸出があればそちらを優先）。
+ */
+export async function getWritableLoan(
+  studentId: string,
+  workId: string,
+): Promise<{ loan: Loan; copy: Copy } | undefined> {
+  const db = getDb();
+  const rows = await db
+    .select({ loan: loans, copy: copies })
+    .from(loans)
+    .innerJoin(copies, eq(copies.id, loans.copyId))
+    .where(and(eq(loans.studentId, studentId), eq(copies.workId, workId)));
+
+  const now = new Date();
+  const active = rows.find((r) => r.loan.returnedAt === null);
+  if (active) return active;
+
+  return rows
+    .filter((r) => r.loan.returnedAt !== null)
+    .sort((a, b) => b.loan.returnedAt!.localeCompare(a.loan.returnedAt!))
+    .find((r) => daysSince(r.loan.returnedAt!, now) <= WRITE_GRACE_DAYS);
+}
+
+/**
+ * 最近返した本のうち、まだ感想を書いていないもの。返却直後は「いま借りている本」
+ * から消えて見失いやすいので、ホームでもう一度気づけるようにする。
+ */
+export async function getRecentlyReturnedUnwritten(
+  studentId: string,
+): Promise<{ loan: Loan; copy: Copy; work: Work; daysLeft: number }[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(loans)
+    .where(and(eq(loans.studentId, studentId), isNotNull(loans.returnedAt)))
+    .orderBy(desc(loans.returnedAt));
+
+  const now = new Date();
+  const result: { loan: Loan; copy: Copy; work: Work; daysLeft: number }[] = [];
+  for (const loan of rows) {
+    const left = WRITE_GRACE_DAYS - daysSince(loan.returnedAt!, now);
+    if (left <= 0) continue;
+    const copy = await getCopy(loan.copyId);
+    const work = copy && (await getWork(copy.workId));
+    if (!copy || !work) continue;
+    if (await hasWritten(studentId, work.id)) continue;
+    result.push({ loan, copy, work, daysLeft: left });
+  }
+  return result;
 }
 
 /* ------------------------------------------------------------------ */
@@ -369,6 +437,87 @@ export async function registerTag(copyId: string, token: string): Promise<void> 
   if (!copy) throw new Error(`不明な蔵書: ${copyId}`);
   if (copy.tagToken !== null) throw new Error("すでにタグが登録されています");
   await db.update(copies).set({ tagToken: token }).where(eq(copies.id, copyId));
+}
+
+/* ------------------------------------------------------------------ */
+/* 司書向け: 貸出                                                       */
+/* ------------------------------------------------------------------ */
+
+/** 生徒の一覧。入学年度の新しい順、同じ年度はペンネーム順。停止したアカウントは出さない */
+export async function getAllStudents(): Promise<Student[]> {
+  const db = getDb();
+  return db
+    .select({ id: students.id, penName: students.penName, entranceYear: students.entranceYear })
+    .from(students)
+    .innerJoin(users, eq(users.id, students.id))
+    .where(eq(users.active, true))
+    .orderBy(desc(students.entranceYear), students.penName);
+}
+
+/** その1冊の、まだ返っていない貸出。無ければ undefined */
+export async function getActiveLoanForCopy(copyId: string): Promise<Loan | undefined> {
+  const db = getDb();
+  const [loan] = await db
+    .select()
+    .from(loans)
+    .where(and(eq(loans.copyId, copyId), isNull(loans.returnedAt)))
+    .limit(1);
+  return loan;
+}
+
+/** いま貸し出している全部。新しい順 */
+export async function getActiveLoans(): Promise<ActiveLoan[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(loans)
+    .where(isNull(loans.returnedAt))
+    .orderBy(desc(loans.borrowedAt));
+
+  const result: ActiveLoan[] = [];
+  for (const loan of rows) {
+    const copy = await getCopy(loan.copyId);
+    const work = copy && (await getWork(copy.workId));
+    const student = await getStudent(loan.studentId);
+    if (!copy || !work) continue;
+    result.push({ loan, copy, work, student });
+  }
+  return result;
+}
+
+/** 貸し出す。すでに誰かに貸している1冊は貸せない */
+export async function addLoan(copyId: string, studentId: string): Promise<void> {
+  const copy = await getCopy(copyId);
+  if (!copy) throw new Error(`不明な蔵書: ${copyId}`);
+  await getStudent(studentId); // 存在しなければここで投げる
+
+  const existing = await getActiveLoanForCopy(copyId);
+  if (existing) {
+    if (existing.studentId === studentId) {
+      throw new Error("この生徒がすでに借りています");
+    }
+    throw new Error("この本は別の生徒に貸し出し中です");
+  }
+
+  const db = getDb();
+  await db.insert(loans).values({
+    id: `l-${randomUUID()}`,
+    copyId,
+    studentId,
+    borrowedAt: new Date().toISOString().slice(0, 10),
+    returnedAt: null,
+  });
+}
+
+/** 返却する。返却日は今日 */
+export async function returnLoan(loanId: string): Promise<void> {
+  const db = getDb();
+  const result = await db
+    .update(loans)
+    .set({ returnedAt: new Date().toISOString().slice(0, 10) })
+    .where(and(eq(loans.id, loanId), isNull(loans.returnedAt)))
+    .returning({ id: loans.id });
+  if (result.length === 0) throw new Error("この貸出はすでに返却されています");
 }
 
 /* ------------------------------------------------------------------ */

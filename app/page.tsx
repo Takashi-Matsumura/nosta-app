@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireStudent } from "@/lib/auth";
-import { getBorrowedBooks } from "@/lib/data";
+import { getBorrowedBooks, getRecentlyReturnedUnwritten } from "@/lib/data";
 import { gradeAt, gradeLabel } from "@/lib/school";
 import { BookSlip } from "./components/book-slip";
 import { SiteHeader } from "./components/site-header";
@@ -11,6 +11,7 @@ export default async function HomePage() {
   const grade = gradeLabel(gradeAt(student.entranceYear, now));
   const books = await getBorrowedBooks(student.id);
   const unwritten = books.filter((b) => !b.hasWritten).length;
+  const recentlyReturned = await getRecentlyReturnedUnwritten(student.id);
 
   return (
     <>
@@ -44,13 +45,35 @@ export default async function HomePage() {
           ))}
         </ul>
 
+        {recentlyReturned.length > 0 && (
+          <>
+            <h2 className="mt-10 text-base tracking-wide">最近返した本</h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              返却したあとも、しばらくはカードを書けます。
+            </p>
+            <ul className="mt-4 space-y-3">
+              {recentlyReturned.map(({ work, copy, daysLeft }) => (
+                <BookSlip
+                  key={copy.id}
+                  work={work}
+                  href={`/works/${work.id}`}
+                  tagged={copy.tagToken !== null}
+                  note={
+                    <span className="text-stamp">あと{daysLeft}日は書けます</span>
+                  }
+                />
+              ))}
+            </ul>
+          </>
+        )}
+
         <div className="mt-14 border-t border-rule/70 pt-6 text-sm text-ink-soft">
           <p className="leading-relaxed">
             借りていない本も
             <Link href="/search" className="mx-1 underline underline-offset-4">
               さがす
             </Link>
-            ことはできます。書けるのは借りたときです。
+            ことはできます。書けるのは借りているあいだと、返却してからしばらくの間です。
           </p>
           <p className="mt-4 text-xs leading-relaxed text-ink-faint">
             （試作）本に貼った NTAG をかざすと
