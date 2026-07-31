@@ -17,22 +17,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    /** 学校のドメイン外のメールと、users に登録の無いアカウントを弾く */
+    /** 学校のドメイン外のメール、users に登録の無いアカウント、停止済みのアカウントを弾く */
     async signIn({ profile }) {
       const email = profile?.email;
       if (!email) return false;
       if (allowedDomain && !email.endsWith(`@${allowedDomain}`)) return false;
       const user = await getUserByEmail(email);
-      return Boolean(user);
+      return user?.active ?? false;
     },
     async jwt({ token, profile }) {
       const email = profile?.email ?? token.email;
       if (email) {
         const user = await getUserByEmail(email);
-        if (user) {
-          token.userId = user.id;
-          token.role = user.role;
-        }
+        // 停止されたアカウント（登録が消えた場合を含む）は、ここでセッションごと落とす
+        if (!user || !user.active) return null;
+        token.userId = user.id;
+        token.role = user.role;
       }
       return token;
     },
