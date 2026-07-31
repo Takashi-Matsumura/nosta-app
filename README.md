@@ -135,6 +135,25 @@ openBD は未知の ISBN でも 200 で `[null]` を返すため、`res.ok` だ�
 画面が固まらないようにしている。請求記号・バーコードは openBD には無いので、
 確認カードを見ながら司書が手で入力する。
 
+ISBN は `normalizeIsbn`（`lib/openbd.ts`）で正規化してから照会する。本の裏表紙には
+「ISBN978-4-12-150861-4 C1236」のように "ISBN" の文字やCコード・価格が一緒に印刷されて
+いることが多く、そのまま渡すと openBD が本を見つけられない。また刊行年（`pubdate`）が
+空のまま登録されている本もあるため、`OpenBdBook.publishedYear` は `null` になりうる型にし、
+その場合は確認カードで司書が刊行年を確認・入力してから登録する。
+
+### 刊行年・請求記号は国立国会図書館サーチで補う
+
+openBD には刊行年が欠けている本があり、そもそも請求記号のもとになる NDC 分類は
+openBD 自体に存在しない。この2つを `lib/ndl.ts` の `fetchNdlInfo` で補完する
+（NDLサーチの SRU API、`recordSchema=dcndl` で XML を取得し、`dcterms:issued` と
+`class/ndc10/…` の URI から正規表現で抜き出すだけの軽量実装。XML パーサは追加していない）。
+
+**あくまで補完・提案であり、それ自体は例外を投げない。** 見つからなければ
+`{ publishedYear: null, ndc: null }` を返すだけで、確認カードでの手入力に落ちる。
+NDC は請求記号の頭数字の候補にすぎず、末尾の著者記号（カタカナ）は司書が確認して付け足す。
+NDLサーチのレスポンスは openBD より大きく（数十KB）まれに遅いため、
+`fetchBook` より長めの `AbortSignal.timeout(8000)` を設定している。
+
 ### ログインは proxy.ts で全ページに強制している
 
 `proxy.ts`（Next.js 16 で middleware から改称）で、`/login` と NextAuth の内部エンドポイント以外の
