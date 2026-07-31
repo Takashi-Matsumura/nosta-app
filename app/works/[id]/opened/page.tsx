@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  getReview,
-  getReviewsForWork,
-  getWork,
-} from "@/lib/mock-data";
+import { getReview, getReviewsForWork, getWork } from "@/lib/data";
 import { ReviewEntry } from "@/app/components/review-entry";
 import { SiteHeader } from "@/app/components/site-header";
 
@@ -18,12 +14,14 @@ export default async function OpenedPage({
 }) {
   const { id } = await params;
   const { r } = await searchParams;
-  const work = getWork(id);
+  const work = await getWork(id);
   if (!work) notFound();
 
   const now = new Date();
-  const mine = r ? getReview(r) : undefined;
-  const earlier = getReviewsForWork(work.id).filter((rev) => rev.id !== mine?.id);
+  const mine = r ? await getReview(r) : undefined;
+  const earlier = (await getReviewsForWork(work.id)).filter(
+    (rev) => rev.id !== mine?.id,
+  );
 
   return (
     <>

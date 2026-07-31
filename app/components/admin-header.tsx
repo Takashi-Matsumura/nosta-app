@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { signOutAction } from "@/lib/actions";
 
 /** 司書用の画面であることを示すヘッダー。生徒向け SiteHeader とは藍色で区別する */
 export function AdminHeader() {
@@ -13,7 +14,7 @@ export function AdminHeader() {
             司書用
           </span>
         </p>
-        <nav className="flex gap-5 text-sm text-paper/80">
+        <nav className="flex items-baseline gap-5 text-sm text-paper/80">
           <Link href="/admin" className="hover:text-paper">
             ダッシュボード
           </Link>
@@ -23,6 +24,11 @@ export function AdminHeader() {
           <Link href="/admin/tags" className="hover:text-paper">
             タグ登録
           </Link>
+          <form action={signOutAction}>
+            <button type="submit" className="hover:text-paper">
+              サインアウト
+            </button>
+          </form>
         </nav>
       </div>
     </header>

@@ -1,10 +1,10 @@
+import { requireStudent } from "@/lib/auth";
 import {
   countReviews,
   getBorrowedBooks,
-  getCurrentStudent,
   hasTaggedCopy,
   searchWorks,
-} from "@/lib/mock-data";
+} from "@/lib/data";
 import { BookSlip } from "@/app/components/book-slip";
 import { SiteHeader } from "@/app/components/site-header";
 
@@ -15,10 +15,10 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = q ?? "";
-  const results = searchWorks(query);
-  const student = getCurrentStudent();
+  const results = await searchWorks(query);
+  const student = await requireStudent();
   const borrowed = new Set(
-    getBorrowedBooks(student.id).map((b) => b.work.id),
+    (await getBorrowedBooks(student.id)).map((b) => b.work.id),
   );
 
   return (
@@ -53,23 +53,25 @@ export default async function SearchPage({
         )}
 
         <ul className="mt-4 space-y-3">
-          {results.map((work) => {
-            const count = countReviews(work.id);
-            return (
-              <BookSlip
-                key={work.id}
-                work={work}
-                href={`/works/${work.id}`}
-                tagged={hasTaggedCopy(work.id)}
-                note={
-                  <span>
-                    {count > 0 ? `${count}枚のカード` : "カードはまだ白紙"}
-                    {borrowed.has(work.id) && "　／　借りています"}
-                  </span>
-                }
-              />
-            );
-          })}
+          {await Promise.all(
+            results.map(async (work) => {
+              const count = await countReviews(work.id);
+              return (
+                <BookSlip
+                  key={work.id}
+                  work={work}
+                  href={`/works/${work.id}`}
+                  tagged={await hasTaggedCopy(work.id)}
+                  note={
+                    <span>
+                      {count > 0 ? `${count}枚のカード` : "カードはまだ白紙"}
+                      {borrowed.has(work.id) && "　／　借りています"}
+                    </span>
+                  }
+                />
+              );
+            }),
+          )}
         </ul>
       </main>
     </>

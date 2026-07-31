@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { signOutAction } from "@/lib/actions";
 
 export function SiteHeader() {
   return (
@@ -7,13 +8,18 @@ export function SiteHeader() {
         <Link href="/" className="text-lg tracking-[0.35em]">
           ノスタ
         </Link>
-        <nav className="flex gap-5 text-sm text-ink-soft">
+        <nav className="flex items-baseline gap-5 text-sm text-ink-soft">
           <Link href="/search" className="hover:text-ink">
             さがす
           </Link>
           <Link href="/me" className="hover:text-ink">
             じぶんの記録
           </Link>
+          <form action={signOutAction}>
+            <button type="submit" className="hover:text-ink">
+              サインアウト
+            </button>
+          </form>
         </nav>
       </div>
     </header>
