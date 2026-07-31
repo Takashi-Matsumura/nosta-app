@@ -8,6 +8,7 @@ import {
   addReport,
   addReview,
   addUser,
+  addWork,
   deleteReview,
   dismissReport,
   getCopy,
@@ -21,6 +22,7 @@ import {
   updatePenName,
   updateReview,
 } from "./data";
+import { fetchBook } from "./openbd";
 
 export async function postReview(formData: FormData) {
   const student = await requireStudent();
@@ -238,4 +240,31 @@ export async function returnLoanAction(formData: FormData) {
   await returnLoan(loanId);
   revalidatePath("/admin/loans");
   revalidatePath("/");
+}
+
+/** openBD の照会（/admin/works?isbn=... の GET）自体は Server Component 側で行い、ここは登録だけを扱う */
+export async function addWorkAction(formData: FormData) {
+  await requireLibrarian();
+
+  const isbn = String(formData.get("isbn") ?? "").replace(/[-\s]/g, "").trim();
+  const callNumber = String(formData.get("callNumber") ?? "").trim();
+  const barcode = String(formData.get("barcode") ?? "").trim();
+
+  if (!/^(\d{9}[\dX]|\d{13})$/.test(isbn)) {
+    throw new Error("ISBN が不正です");
+  }
+  if (!callNumber) {
+    throw new Error("請求記号が空です");
+  }
+  if (!barcode) {
+    throw new Error("バーコードが空です");
+  }
+
+  const book = await fetchBook(isbn);
+  if (!book) {
+    throw new Error(`openBD に ISBN ${isbn} の本が見つかりませんでした`);
+  }
+
+  await addWork({ ...book, callNumber, barcode });
+  revalidatePath("/admin/works");
 }

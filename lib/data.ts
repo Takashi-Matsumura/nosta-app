@@ -521,6 +521,65 @@ export async function returnLoan(loanId: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
+/* 司書向け: 蔵書                                                       */
+/* ------------------------------------------------------------------ */
+
+export async function getWorkByIsbn(isbn: string): Promise<Work | undefined> {
+  const db = getDb();
+  const [work] = await db.select().from(works).where(eq(works.isbn, isbn)).limit(1);
+  return work;
+}
+
+/** 登録済みの作品ぜんぶ。冊数つき。題名順 */
+export async function getAllWorks(): Promise<(Work & { copyCount: number })[]> {
+  const db = getDb();
+  const allWorks = await db.select().from(works).orderBy(works.title);
+  const result: (Work & { copyCount: number })[] = [];
+  for (const work of allWorks) {
+    const workCopies = await getCopiesForWork(work.id);
+    result.push({ ...work, copyCount: workCopies.length });
+  }
+  return result;
+}
+
+/** openBD から取得した書誌と、その1冊目の蔵書をまとめて登録する */
+export async function addWork(input: {
+  isbn: string;
+  title: string;
+  author: string;
+  publisher: string;
+  publishedYear: number;
+  callNumber: string;
+  barcode: string;
+}): Promise<Work> {
+  const existingWork = await getWorkByIsbn(input.isbn);
+  if (existingWork) throw new Error("この ISBN はすでに登録されています");
+  const existingCopy = await getCopyByBarcode(input.barcode);
+  if (existingCopy) throw new Error("このバーコードはすでに使われています");
+
+  const db = getDb();
+  const work: Work = {
+    id: `w-${randomUUID()}`,
+    isbn: input.isbn,
+    title: input.title,
+    author: input.author,
+    publisher: input.publisher,
+    publishedYear: input.publishedYear,
+    callNumber: input.callNumber,
+  };
+  await db.transaction(async (tx) => {
+    await tx.insert(works).values(work);
+    await tx.insert(copies).values({
+      id: `c-${randomUUID()}`,
+      workId: work.id,
+      barcode: input.barcode,
+      tagToken: null,
+    });
+  });
+  return work;
+}
+
+/* ------------------------------------------------------------------ */
 /* 司書向け: ユーザー管理                                                */
 /* ------------------------------------------------------------------ */
 
