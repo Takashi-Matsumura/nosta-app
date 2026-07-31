@@ -14,7 +14,7 @@ export default async function AdminDashboardPage() {
       <main className="mx-auto w-full max-w-3xl grow px-5 py-10">
         <h1 className="text-xl tracking-wide">ダッシュボード</h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          通報の確認とタグ登録は、ここから行います。
+          通報の確認・タグ登録・貸出は、ここから行います。
         </p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">

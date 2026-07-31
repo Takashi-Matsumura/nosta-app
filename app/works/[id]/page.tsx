@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStudent } from "@/lib/auth";
 import {
-  getBorrowedBooks,
   getReportedReviewIds,
   getReviewsForWork,
   getWork,
+  getWritableLoan,
   hasTaggedCopy,
   hasWritten,
 } from "@/lib/data";
+import { writeGraceDaysLeft } from "@/lib/school";
 import { LibraryCard } from "@/app/components/library-card";
 import { ReviewActions } from "@/app/components/review-actions";
 import { ReviewEntry } from "@/app/components/review-entry";
@@ -28,9 +29,7 @@ export default async function WorkPage({
   const now = new Date();
   const reviews = await getReviewsForWork(work.id);
   const opened = await hasWritten(student.id, work.id);
-  const borrowed = (await getBorrowedBooks(student.id)).find(
-    (b) => b.work.id === work.id,
-  );
+  const writable = await getWritableLoan(student.id, work.id);
   const reportedIds = new Set(await getReportedReviewIds(student.id));
 
   return (
@@ -67,7 +66,7 @@ export default async function WorkPage({
         </LibraryCard>
 
         <div className="mt-8">
-          {borrowed ? (
+          {writable ? (
             <>
               <Link
                 href={`/works/${work.id}/write`}
@@ -76,8 +75,19 @@ export default async function WorkPage({
                 {opened ? "もう一度カードを書く" : "カードを書く"}
               </Link>
               <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-                {borrowed.loan.borrowedAt} に借りた1冊（
-                <span className="font-mono">{borrowed.copy.barcode}</span>）
+                {writable.loan.returnedAt === null ? (
+                  <>
+                    {writable.loan.borrowedAt} に借りた1冊（
+                    <span className="font-mono">{writable.copy.barcode}</span>）
+                  </>
+                ) : (
+                  <>
+                    {writable.loan.returnedAt} に返却済み（
+                    <span className="font-mono">{writable.copy.barcode}</span>
+                    ）。あと{writeGraceDaysLeft(writable.loan.returnedAt, now)}
+                    日は書けます。
+                  </>
+                )}
               </p>
             </>
           ) : (

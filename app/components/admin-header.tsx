@@ -14,7 +14,7 @@ export function AdminHeader() {
             司書用
           </span>
         </p>
-        <nav className="flex items-baseline gap-5 text-sm text-paper/80">
+        <nav className="flex flex-wrap items-baseline gap-x-5 gap-y-2 text-sm text-paper/80">
           <Link href="/admin" className="hover:text-paper">
             ダッシュボード
           </Link>
@@ -23,6 +23,9 @@ export function AdminHeader() {
           </Link>
           <Link href="/admin/tags" className="hover:text-paper">
             タグ登録
+          </Link>
+          <Link href="/admin/loans" className="hover:text-paper">
+            貸出
           </Link>
           <Link href="/admin/users" className="hover:text-paper">
             ユーザー
