@@ -24,6 +24,9 @@ export function AdminHeader() {
           <Link href="/admin/tags" className="hover:text-paper">
             タグ登録
           </Link>
+          <Link href="/admin/users" className="hover:text-paper">
+            ユーザー
+          </Link>
           <form action={signOutAction}>
             <button type="submit" className="hover:text-paper">
               サインアウト

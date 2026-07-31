@@ -36,7 +36,7 @@ export default async function AdminReportsPage() {
                       <span className="ml-2 text-ink-soft">
                         {authorLabel(
                           report.review.author.entranceYear,
-                          report.review.author.penName,
+                          report.review.penNameAtPost,
                         )}
                       </span>
                     </p>

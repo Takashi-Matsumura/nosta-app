@@ -6,7 +6,13 @@ import { getStudent, getUserByEmail } from "./data";
 const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [Google],
+  providers: [
+    Google({
+      // 毎回アカウント選択を出す。複数の Google アカウントでログインしている
+      // ブラウザだと、これが無いと Google 側が黙って別アカウントを使ってしまう
+      authorization: { params: { prompt: "select_account" } },
+    }),
+  ],
   pages: {
     signIn: "/login",
   },

@@ -127,62 +127,62 @@ async function main() {
   console.log("感想を投入しています…");
   await db.insert(reviews).values([
     {
-      id: "r-1", workId: "w-ginga", copyId: "c-ginga-1", studentId: "s-kamome", gradeAtPost: 5,
+      id: "r-1", workId: "w-ginga", copyId: "c-ginga-1", studentId: "s-kamome", gradeAtPost: 5, penNameAtPost: "かもめ",
       body: "二回目に読んだら、カムパネルラがいつからいなかったのかが分かってしまって、一回目より息が苦しかった。最初に読んだときは、ただきれいな話だと思っていた。同じ本なのに、読む人が変わると別の本になる。",
       quoteText: "ほんとうのさいわい", quotePage: 212, postedAt: "2019-11-08", hidden: false,
     },
     {
-      id: "r-2", workId: "w-ginga", copyId: "c-ginga-1", studentId: "s-nanakumi", gradeAtPost: 5,
+      id: "r-2", workId: "w-ginga", copyId: "c-ginga-1", studentId: "s-nanakumi", gradeAtPost: 5, penNameAtPost: "七組の雨",
       body: "電車の窓の外はずっと暗いのに、ページの上はずっと明るい。自習室で読んでいたら外も暗くなっていて、顔を上げたとき自分がどこにいるのか一瞬わからなかった。あの感じのために、たぶんまた読む。",
       quoteText: null, quotePage: null, postedAt: "2022-09-14", hidden: false,
     },
     {
-      id: "r-3", workId: "w-ginga", copyId: "c-ginga-2", studentId: "s-minamo", gradeAtPost: 4,
+      id: "r-3", workId: "w-ginga", copyId: "c-ginga-2", studentId: "s-minamo", gradeAtPost: 4, penNameAtPost: "みなも",
       body: "読み終えてから、しばらく返却カウンターに行けなかった。返したら終わってしまう気がして、結局そのまま延長した。",
       quoteText: "ほんとうのさいわい", quotePage: 212, postedAt: "2024-10-11", hidden: false,
     },
     {
-      id: "r-4", workId: "w-kokoro", copyId: "c-kokoro-1", studentId: "s-fuyunoinu", gradeAtPost: 5,
+      id: "r-4", workId: "w-kokoro", copyId: "c-kokoro-1", studentId: "s-fuyunoinu", gradeAtPost: 5, penNameAtPost: "冬の犬",
       body: "先生はずるいと思った。でも、自分もたぶん同じことをする。それが分かってしまったのがいちばん嫌だった。",
       quoteText: "私はその人を常に先生と呼んでいた。", quotePage: 5, postedAt: "2021-01-30", hidden: false,
     },
     {
-      id: "r-5", workId: "w-kokoro", copyId: "c-kokoro-1", studentId: "s-takenoko", gradeAtPost: 5,
+      id: "r-5", workId: "w-kokoro", copyId: "c-kokoro-1", studentId: "s-takenoko", gradeAtPost: 5, penNameAtPost: "たけのこ",
       body: "上と中を読んでいるあいだは退屈だと思っていたのに、下でぜんぶ意味が変わった。退屈だと思っていた自分ごと、下に回収された感じがする。",
       quoteText: null, quotePage: null, postedAt: "2023-07-19", hidden: false,
     },
     {
-      id: "r-6", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-kamome", gradeAtPost: 3,
+      id: "r-6", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-kamome", gradeAtPost: 3, penNameAtPost: "かもめ",
       body: "授業で読まされたときはまったくピンとこなかったのに、テストが終わってから自分で読み返したらこわくなった。",
       quoteText: "臆病な自尊心と尊大な羞恥心", quotePage: 14, postedAt: "2017-06-22", hidden: false,
     },
     {
-      id: "r-7", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-nanakumi", gradeAtPost: 3,
+      id: "r-7", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-nanakumi", gradeAtPost: 3, penNameAtPost: "七組の雨",
       body: "書いたものを人に見せるのが怖いのは、下手だと思われるのが怖いんじゃなくて、本気だとばれるのが怖いからだと気づいた。",
       quoteText: null, quotePage: null, postedAt: "2020-05-02", hidden: false,
     },
     {
-      id: "r-8", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-takenoko", gradeAtPost: 3,
+      id: "r-8", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-takenoko", gradeAtPost: 3, penNameAtPost: "たけのこ",
       body: "虎になった理由が、才能がなかったからではなく、才能があるかどうかを確かめなかったからだ、というところがいちばんこたえた。",
       quoteText: null, quotePage: null, postedAt: "2021-12-03", hidden: false,
     },
     {
-      id: "r-9", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-shiori", gradeAtPost: 3,
+      id: "r-9", workId: "w-sangetsu", copyId: "c-sangetsu-1", studentId: "s-shiori", gradeAtPost: 3, penNameAtPost: "しおり",
       body: "李徴の言い訳が、自分の言い訳とおなじ言い方をしていた。読み終わってから、机の上に置いたままの提出物を見るのがいやになった。",
       quoteText: "臆病な自尊心と尊大な羞恥心", quotePage: 14, postedAt: "2026-07-15", hidden: false,
     },
     {
-      id: "r-10", workId: "w-ningen", copyId: "c-ningen-1", studentId: "s-shizuku", gradeAtPost: 4,
+      id: "r-10", workId: "w-ningen", copyId: "c-ningen-1", studentId: "s-shizuku", gradeAtPost: 4, penNameAtPost: "しずく",
       body: "明るく振る舞うほど人から遠くなる、というのが分かりすぎて、途中で本を閉じた。次の日にちゃんと続きを読んだ。",
       quoteText: "恥の多い生涯を送って来ました。", quotePage: 9, postedAt: "2025-06-05", hidden: false,
     },
     {
-      id: "r-11", workId: "w-kaze", copyId: "c-kaze-1", studentId: "s-minamo", gradeAtPost: 2,
+      id: "r-11", workId: "w-kaze", copyId: "c-kaze-1", studentId: "s-minamo", gradeAtPost: 2, penNameAtPost: "みなも",
       body: "走るのがきらいだったのに、読み終わったら少しだけ走ってみたくなった。次の日の朝に実際に走って、三分でやめた。それでも読む前とは違う。",
       quoteText: null, quotePage: null, postedAt: "2023-02-17", hidden: false,
     },
     {
-      id: "r-12", workId: "w-kaze", copyId: "c-kaze-1", studentId: "s-shizuku", gradeAtPost: 3,
+      id: "r-12", workId: "w-kaze", copyId: "c-kaze-1", studentId: "s-shizuku", gradeAtPost: 3, penNameAtPost: "しずく",
       body: "十人ぜんぶに好きなところがあるのがずるい。誰か一人に決められないまま最後まで来てしまった。",
       quoteText: null, quotePage: null, postedAt: "2024-05-20", hidden: false,
     },
