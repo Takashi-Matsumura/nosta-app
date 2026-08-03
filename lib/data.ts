@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, max } from "drizzle-orm";
 import { getDb } from "./db";
 import { copies, loans, reports, reviews, students, users, works } from "./db/schema";
 import { daysSince, gradeAt, isEditable, WRITE_GRACE_DAYS } from "./school";
@@ -405,29 +405,33 @@ export async function hideReportedReview(reportId: string): Promise<void> {
 }
 
 /**
- * 感想がついているのに NTAG がまだ貼られていない蔵書。
- * 司書がタグを貼ったあと、ここでトークンを登録する。
+ * NTAG がまだ貼られていない蔵書。感想が多い順、同数なら感想が新しい順に並べ、
+ * 感想が1件もない（登録直後の）蔵書は最後に回る。
  */
 export async function getUntaggedCopies(): Promise<UntaggedCopy[]> {
   const db = getDb();
-  const untaggedCopies = await db.select().from(copies).where(isNull(copies.tagToken));
+  const reviewCount = count(reviews.id);
+  const latestReviewAt = max(reviews.postedAt);
 
-  const result: UntaggedCopy[] = [];
-  for (const copy of untaggedCopies) {
-    const reviewRows = await db
-      .select({ id: reviews.id })
-      .from(reviews)
-      .where(eq(reviews.copyId, copy.id));
-    if (reviewRows.length === 0) continue;
-    const work = await getWork(copy.workId);
-    if (!work) continue;
-    result.push({ copy, work, reviewCount: reviewRows.length });
-  }
-  return result;
+  const rows = await db
+    .select({ copy: copies, work: works, reviewCount, latestReviewAt })
+    .from(copies)
+    .innerJoin(works, eq(works.id, copies.workId))
+    .leftJoin(reviews, eq(reviews.copyId, copies.id))
+    .where(isNull(copies.tagToken))
+    .groupBy(copies.id, works.id)
+    .orderBy(desc(reviewCount), desc(latestReviewAt));
+
+  return rows.map(({ copy, work, reviewCount }) => ({ copy, work, reviewCount }));
 }
 
 export async function countUntaggedCopies(): Promise<number> {
-  return (await getUntaggedCopies()).length;
+  const db = getDb();
+  const [row] = await db
+    .select({ n: count() })
+    .from(copies)
+    .where(isNull(copies.tagToken));
+  return row?.n ?? 0;
 }
 
 /** NTAG に書き込んだトークンを蔵書に登録する */

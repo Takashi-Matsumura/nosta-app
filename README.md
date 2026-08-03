@@ -23,7 +23,7 @@
 | 出会い方 | 作品検索・一覧からたどる |
 | 公開前チェック | 事後型（即公開＋通報＋司書の管理画面） |
 | 卒業後 | 感想は残る／アカウントは停止 |
-| タグ運用 | 感想が書かれた本に後から NTAG を貼る |
+| タグ運用 | 蔵書登録の都度 NTAG に書き込む（感想がついた本を優先して一覧に出す） |
 | 認証 | 学校の Google アカウント（ドメイン制限） |
 | 書ける条件 | 貸し出した本だけ。同じ本への複数回投稿は可 |
 | 編集・削除 | 投稿から一定期間は自由、以降は確定 |
@@ -78,6 +78,35 @@
 
 トークンには NFC の UID を使わない。UID は読み取りも複製もできるため、蔵書レコード側に別途発行する。
 
+### タグへの書き込みは RC-S300（PC/SC）で行う。Web NFC API は使わない
+
+`/admin/tags` の「タグに書き込む」は、司書の PC に USB 接続した Sony RC-S300 を
+`nfc-pcsc`（Node.js から PC/SC 経由でカードを読み書きするライブラリ）で叩き、
+`lib/tag.ts` の `newTagToken`/`tagUrl` で作った URL を NDEF として NTAG213 に書き込む
+（`lib/nfc/ndef.ts` でエンコード、`lib/nfc/writer.ts` が書き込み本体）。
+
+Web NFC API（`NDEFReader`）は検討したが、Safari が iOS/iPadOS/macOS すべてで
+非対応（2026年8月現在）なため断念した。書き込みはアプリサーバーと RC-S300 が
+同一マシンにある前提で、PC/SC 経由に一本化している。`nfc-pcsc` はネイティブモジュールを
+含むため `next.config.ts` の `serverExternalPackages` でバンドル対象から外している。
+
+NTAG213 の READ は PC/SC 経由だと常に4ページ(16バイト)単位でしか返せない
+（4バイトを要求すると `0x6C10` で拒否される）。`lib/nfc/writer.ts` の `readAligned` は
+これを16バイト単位に切り上げてから先頭だけ切り出している。
+
+**タグはロックしない。** `APP_BASE_URL`（ホスティング先）が未確定なため、
+書いた URL は将来書き直す前提でいる。ロックすると NTAG213 は二度と書き換えられなくなる。
+
+書き込みを Server Action にせず Route Handler（`app/admin/tags/write/route.ts`）に
+しているのは、openBD 照会と同じ理由（本番ビルドでは Server Action の例外メッセージが
+伏せられる。後述）に加えて、`proxy.ts` が「司書アカウントは `/admin` 配下以外に
+来ると `/admin` へ強制的に戻す」ため。`/api/...` に置くと司書の POST がそこで
+リダイレクトされて実行されない。`/admin/tags/write` に置くことでこれを避けている。
+
+DB を更新するのは物理書き込みが成功してからにしている。逆にすると、書き込み失敗時に
+「DB 上だけ貼付済み」という気づきにくい不整合が残る。NTAG213 はロックしない限り
+何度でも上書きできるので、書き込みが失敗しても再試行すれば回復できる。
+
 ### 伏せる処理はサーバー側でやる
 
 未投稿の作品ページには、先輩の感想を HTML に一切出力しない。CSS で隠すだけでは開発者ツールから読めてしまい、
@@ -109,7 +138,7 @@
 ### 貸出は司書が `/admin/loans` で作る。図書館システムには依存しない
 
 司書が生徒を選んでから、本の NTAG をかざすかバーコードを入力して貸出を作る（`lendAction`）。
-NTAG は「感想が書かれた後に貼る」運用のため、貸出時点ではまだ無い蔵書も多い。その場合は
+NTAG が未貼付の蔵書（登録時にリーダーが無かった、書き込みに失敗した等）もありうるため、その場合は
 作品名・著者で検索して手動で1冊を選ぶフォールバックがある。同じ蔵書の二重貸出（別の生徒・
 同じ生徒のどちらも）は拒否する。
 
@@ -200,6 +229,7 @@ npm run dev
 | `ALLOWED_EMAIL_DOMAIN` | ログインを許可するメールドメイン |
 | `AUTH_SECRET` | セッション署名用。`openssl rand -base64 32` で生成 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google Cloud Console で発行する OAuth クライアント。リダイレクト URI に `http://localhost:3000/api/auth/callback/google` を登録する。**未設定のあいだは Google ログインが動かない** |
+| `APP_BASE_URL` | NTAG に書き込む URL の起点。タップする端末から到達できるアドレスにする（開発中は LAN IP）。**タグに書いた URL は物理的に固定される** |
 
 http://localhost:3000 を開く。`npm run db:seed` は生徒7人＋司書1人を
 `<slug>@<ALLOWED_EMAIL_DOMAIN>` というメールアドレスで投入する（例: `shiori@nosta-school.example`）。
